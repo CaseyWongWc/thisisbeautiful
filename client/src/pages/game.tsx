@@ -3,7 +3,9 @@ import { useLocation } from 'wouter';
 import GameHeader from '@/components/game/GameHeader';
 import GameBoard from '@/components/game/GameBoard';
 import StatusPanel from '@/components/game/StatusPanel';
-import { Cell, Position, PlayerStats, Decision, BrainStrategy, GameSettings, Trader } from '@shared/schema';
+import CombatPanel from '@/components/game/CombatPanel';
+import { Button } from '@/components/ui/button';
+import { Cell, Position, PlayerStats, Decision, BrainStrategy, GameSettings, Trader, Enemy } from '@shared/schema';
 import { 
   generateMap, 
   findPath, 
@@ -20,7 +22,17 @@ import {
   collectItem
 } from '@/lib/game';
 import { getCell } from '@/lib/game/map';
+import { simulateCombatTurn, collectEnemyReward } from '@/lib/game/enemy';
 import { useToast } from '@/hooks/use-toast';
+
+// Define Combat interface locally if it's not defined in schema yet
+interface Combat {
+  inCombat: boolean;
+  enemy?: Enemy;
+  playerDamage: number;
+  enemyDamage: number;
+  turnsLeft: number;
+}
 
 const DEFAULT_WIDTH = 20;
 const DEFAULT_HEIGHT = 15;
@@ -40,7 +52,17 @@ const Game: React.FC = () => {
     maxWater: 0,
     currentFood: 0,
     maxFood: 0,
-    gold: 0
+    gold: 0,
+    damage: 0,
+    defense: 0
+  });
+  
+  // Combat state
+  const [combat, setCombat] = useState<Combat>({
+    inCombat: false,
+    playerDamage: 0,
+    enemyDamage: 0,
+    turnsLeft: 0
   });
   
   // Game systems
@@ -344,6 +366,162 @@ const Game: React.FC = () => {
     }
   };
   
+  // Handle combat attack
+  const handleCombatAttack = () => {
+    if (!combat.inCombat || !combat.enemy) return;
+    
+    // Calculate combat results
+    const { 
+      updatedPlayerStats, 
+      updatedEnemy, 
+      playerDamage, 
+      enemyDamage 
+    } = simulateCombatTurn(playerStats, combat.enemy);
+    
+    // Update stats
+    setPlayerStats(updatedPlayerStats);
+    
+    // Update combat state
+    setCombat({
+      ...combat,
+      enemy: updatedEnemy,
+      playerDamage,
+      enemyDamage,
+      turnsLeft: combat.turnsLeft - 1
+    });
+    
+    // Check if combat is over
+    if (updatedEnemy.health <= 0) {
+      // Enemy defeated
+      endCombat(true);
+      
+      // Update the grid to mark enemy as defeated
+      const newGrid = [...grid];
+      const x = playerPosition.x;
+      const y = playerPosition.y;
+      
+      if (newGrid[y] && newGrid[y][x] && newGrid[y][x].enemy) {
+        newGrid[y][x].enemy = {
+          ...newGrid[y][x].enemy!,
+          isDefeated: true
+        };
+      }
+      setGrid(newGrid);
+      
+      // Collect rewards
+      const updatedStats = collectEnemyReward(updatedPlayerStats, updatedEnemy);
+      setPlayerStats(updatedStats);
+      
+      // Add to decision log
+      addDecision(`Defeated ${updatedEnemy.type} and gained ${updatedEnemy.reward.amount} ${updatedEnemy.reward.type}`, updatedStats);
+      
+      toast({
+        title: "Victory!",
+        description: `You defeated the ${updatedEnemy.type} and gained ${updatedEnemy.reward.amount} ${updatedEnemy.reward.type}.`,
+      });
+    } else if (updatedPlayerStats.currentStrength <= 0) {
+      // Player defeated
+      endCombat(false);
+      
+      toast({
+        title: "Defeat!",
+        description: "You were defeated in combat.",
+        variant: "destructive"
+      });
+    } else if (combat.turnsLeft <= 1) {
+      // Combat timeout
+      endCombat(false);
+      
+      toast({
+        title: "Combat Ended",
+        description: "You couldn't defeat the enemy in time.",
+      });
+    }
+  };
+  
+  // Handle attempt to flee from combat
+  const handleCombatFlee = () => {
+    if (!combat.inCombat || !combat.enemy) return;
+    
+    // 50% chance to flee successfully
+    const fleeSuccess = Math.random() > 0.5;
+    
+    if (fleeSuccess) {
+      // Successfully fled
+      endCombat(false);
+      
+      toast({
+        title: "Escaped!",
+        description: "You successfully fled from combat.",
+      });
+    } else {
+      // Failed to flee, take damage
+      const damage = Math.max(1, Math.floor(combat.enemy.damage / 2));
+      const updatedStats = {
+        ...playerStats,
+        currentStrength: Math.max(0, playerStats.currentStrength - damage)
+      };
+      
+      setPlayerStats(updatedStats);
+      setCombat({
+        ...combat,
+        enemyDamage: damage,
+        playerDamage: 0,
+        turnsLeft: combat.turnsLeft - 1
+      });
+      
+      addDecision(`Failed to flee and took ${damage} damage`, updatedStats);
+      
+      // Check if player is defeated
+      if (updatedStats.currentStrength <= 0) {
+        // Player defeated
+        endCombat(false);
+        
+        toast({
+          title: "Defeat!",
+          description: "You were defeated while trying to escape.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+  
+  // End combat
+  const endCombat = (victory: boolean) => {
+    setCombat({
+      inCombat: false,
+      playerDamage: 0,
+      enemyDamage: 0,
+      turnsLeft: 0
+    });
+  };
+  
+  // Check for enemy at the current cell
+  const checkForEnemy = () => {
+    const cell = getCell(grid, playerPosition);
+    if (cell && cell.enemy && !cell.enemy.isDefeated) {
+      // Start combat
+      setCombat({
+        inCombat: true,
+        enemy: cell.enemy,
+        playerDamage: 0,
+        enemyDamage: 0,
+        turnsLeft: 5 // Set number of combat turns
+      });
+      
+      // Stop game loop while in combat
+      setIsRunning(false);
+      
+      // Add decision
+      addDecision(`Encountered a ${cell.enemy.type}`, playerStats);
+    }
+  };
+  
+  // Check for enemies when position changes
+  useEffect(() => {
+    checkForEnemy();
+  }, [playerPosition]);
+
   return (
     <div className="container mx-auto py-8 px-4">
       <GameHeader 
@@ -376,6 +554,16 @@ const Game: React.FC = () => {
           onTrade={handleTrade}
         />
       </div>
+      
+      {/* Combat Panel */}
+      {combat.inCombat && (
+        <CombatPanel
+          combat={combat}
+          playerStats={playerStats}
+          onAttack={handleCombatAttack}
+          onFlee={handleCombatFlee}
+        />
+      )}
       
       {gameWon && (
         <div className="mt-6 p-4 bg-green-100 text-green-800 rounded-lg text-center">

@@ -2,14 +2,18 @@ import { Cell, Position, TerrainType, Item, Trader, GameSettings } from "@shared
 import { getRandomTerrainType } from "./terrain";
 import { generateItems } from "./item";
 import { generateTraders } from "./trader";
+import { generateEnemies } from "./enemy";
 
 export function generateMap(settings: GameSettings): Cell[][] {
   const { width, height, difficulty } = settings;
   const map: Cell[][] = [];
+  const terrainMap: string[][] = [];
 
   // Generate terrain
   for (let y = 0; y < height; y++) {
     const row: Cell[] = [];
+    const terrainRow: string[] = [];
+    
     for (let x = 0; x < width; x++) {
       // Always create an easier path on the horizontal middle
       let type: TerrainType;
@@ -20,7 +24,8 @@ export function generateMap(settings: GameSettings): Cell[][] {
       } else {
         type = getRandomTerrainType(difficulty);
       }
-
+      
+      terrainRow.push(type);
       row.push({
         type,
         position: { x, y },
@@ -28,6 +33,7 @@ export function generateMap(settings: GameSettings): Cell[][] {
       });
     }
     map.push(row);
+    terrainMap.push(terrainRow);
   }
 
   // Add items to the map
@@ -45,6 +51,15 @@ export function generateMap(settings: GameSettings): Cell[][] {
     const { x, y } = trader.position;
     if (map[y] && map[y][x]) {
       map[y][x].trader = trader.trader;
+    }
+  });
+  
+  // Add enemies to the map
+  const enemies = generateEnemies(width, height, difficulty, terrainMap);
+  enemies.forEach(({ enemy, position }) => {
+    const { x, y } = position;
+    if (map[y] && map[y][x] && !map[y][x].trader && !map[y][x].item) {
+      map[y][x].enemy = enemy;
     }
   });
 

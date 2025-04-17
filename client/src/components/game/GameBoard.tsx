@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, Pause, Timer, Eye } from 'lucide-react';
+import { Play, Pause, Timer, Eye, Skull } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Cell, Position } from '@shared/schema';
 import { TERRAIN_COLORS } from '@/lib/game';
@@ -32,6 +32,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
 }) => {
   // Calculate grid template columns based on grid width
   const gridTemplateColumns = grid.length > 0 ? `repeat(${grid[0].length}, 2rem)` : '';
+  
+  // Helper function to determine enemy color
+  const getEnemyColor = (type: string): string => {
+    switch (type) {
+      case 'wolf': return 'text-gray-700';
+      case 'bear': return 'text-amber-700';
+      case 'snake': return 'text-green-600';
+      case 'scorpion': return 'text-yellow-600';
+      case 'bandit': return 'text-red-600';
+      default: return 'text-gray-700';
+    }
+  };
   
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 overflow-hidden">
@@ -123,6 +135,23 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
                     <Eye className="w-3 h-3 text-white" />
+                  </div>
+                </div>
+              )}
+              
+              {/* Enemy */}
+              {cell.enemy && !cell.enemy.isDefeated && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    <Skull className={`w-5 h-5 ${getEnemyColor(cell.enemy.type)}`} />
+                    
+                    {/* Health bar for enemies */}
+                    <div className="absolute -top-1 left-0 right-0 h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-red-500"
+                        style={{ width: `${(cell.enemy.health / cell.enemy.maxHealth) * 100}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
