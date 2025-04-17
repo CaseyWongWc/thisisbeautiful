@@ -84,30 +84,38 @@ export function generateEnemies(
   // Generate enemies
   for (let i = 0; i < enemyCount; i++) {
     // Find a suitable position
-    let x: number = 0;
-    let y: number = 0;
-    let terrain: TerrainType;
+    let x = 0;
+    let y = 0;
+    let terrain: TerrainType = "plains"; // Default
     let attempts = 0;
     const maxAttempts = 10;
+    let validPosition = false;
     
-    do {
+    while (attempts < maxAttempts && !validPosition) {
       x = Math.floor(Math.random() * width);
       y = Math.floor(Math.random() * height);
-      terrain = terrainMap[y][x] as TerrainType;
-      attempts++;
       
-      // Check if position is at the starting area or too close to other enemies
-      const isTooClose = 
-        x < 3 || // Don't place near left edge
-        enemies.some(e => Math.abs(e.position.x - x) < 2 && Math.abs(e.position.y - y) < 2);
+      // Check bounds to prevent accessing undefined cells
+      if (y >= 0 && y < terrainMap.length && x >= 0 && x < terrainMap[y].length) {
+        terrain = terrainMap[y][x] as TerrainType;
         
-      if (!isTooClose) break;
-    } while (attempts < maxAttempts);
+        // Check if position is at the starting area or too close to other enemies
+        const isTooClose = 
+          x < 3 || // Don't place near left edge
+          enemies.some(e => Math.abs(e.position.x - x) < 2 && Math.abs(e.position.y - y) < 2);
+          
+        if (!isTooClose) {
+          validPosition = true;
+        }
+      }
+      
+      attempts++;
+    }
     
     if (attempts >= maxAttempts) continue;
     
     // Determine enemy type based on weighted probability and terrain
-    let selectedType = "";
+    let selectedType: EnemyType = "wolf"; // Default to wolf if nothing else is selected
     
     // First, check which enemy types prefer this terrain
     const suitableTypes = enemyTypes.filter(type => 
@@ -122,13 +130,14 @@ export function generateEnemies(
       for (const type of suitableTypes) {
         cumulativeProbability += enemyTypeDistribution[type];
         if (rand <= cumulativeProbability) {
-          selectedType = type;
+          selectedType = type as EnemyType;
           break;
         }
       }
       
-      if (!selectedType) {
-        selectedType = suitableTypes[0];
+      // If we didn't select a type (unlikely but possible)
+      if (selectedType === "wolf" && suitableTypes[0] !== "wolf") {
+        selectedType = suitableTypes[0] as EnemyType;
       }
     } else {
       // If no suitable types, choose any type
@@ -138,7 +147,7 @@ export function generateEnemies(
       for (const type of enemyTypes) {
         cumulativeProbability += enemyTypeDistribution[type];
         if (rand <= cumulativeProbability) {
-          selectedType = type;
+          selectedType = type as EnemyType;
           break;
         }
       }

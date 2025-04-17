@@ -5,6 +5,7 @@ import { BasicVision, EnhancedVision, FocusVision } from './vision';
 import { collectItem } from './item';
 import { trade } from './trader';
 import { TERRAIN_COSTS, TERRAIN_COLORS } from './terrain';
+import { generateEnemies, simulateCombatTurn, collectEnemyReward, ENEMY_STATS } from './enemy';
 
 export {
   BasicBrain,
@@ -24,5 +25,10 @@ export {
   collectItem,
   trade,
   TERRAIN_COSTS,
-  TERRAIN_COLORS
+  TERRAIN_COLORS,
+  // Enemy and combat functions
+  generateEnemies,
+  simulateCombatTurn,
+  collectEnemyReward,
+  ENEMY_STATS
 };

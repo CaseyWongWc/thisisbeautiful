@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Combat, Enemy, PlayerStats } from '@shared/schema';
-import { ENEMY_STATS } from '@/lib/game/enemy';
+import { ENEMY_STATS } from '@/lib/game';
 
 interface CombatPanelProps {
   combat: Combat;

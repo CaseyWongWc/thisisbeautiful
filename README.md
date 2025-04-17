@@ -38,8 +38,10 @@ A survival game where players navigate from west to east through various terrain
 
 - [ ] Enemy rendering has visual bugs when enemies are defeated
 - [ ] Combat balance needs adjustment for different difficulty levels
-- [ ] ID generation issues in the enemy module
-- [ ] Some TypeScript errors in enemy generation code
+- [x] ID generation issues in the enemy module (fixed)
+- [x] TypeScript errors in enemy generation code (fixed)
+- [ ] Combat system needs more testing and bug fixes
+- [ ] Enemy UI might become desynchronized with state changes
 
 ## Content Ideas 💡
 
