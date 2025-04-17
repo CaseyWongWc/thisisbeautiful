@@ -1,4 +1,5 @@
-import { Enemy, PlayerStats, TerrainType } from "@shared/schema";
+import { Enemy, EnemyType, PlayerStats, TerrainType } from "@shared/schema";
+import { v4 as uuidv4 } from 'uuid';
 
 // Enemy type statistics
 export const ENEMY_STATS = {
@@ -83,7 +84,9 @@ export function generateEnemies(
   // Generate enemies
   for (let i = 0; i < enemyCount; i++) {
     // Find a suitable position
-    let x, y, terrain;
+    let x: number = 0;
+    let y: number = 0;
+    let terrain: TerrainType;
     let attempts = 0;
     const maxAttempts = 10;
     
@@ -92,13 +95,14 @@ export function generateEnemies(
       y = Math.floor(Math.random() * height);
       terrain = terrainMap[y][x] as TerrainType;
       attempts++;
-    } while (
-      // Don't place enemies at the starting area (left edge)
-      (x < 3) ||
-      // Don't place enemies too close together
-      enemies.some(e => Math.abs(e.position.x - x) < 2 && Math.abs(e.position.y - y) < 2) ||
-      (attempts < maxAttempts)
-    );
+      
+      // Check if position is at the starting area or too close to other enemies
+      const isTooClose = 
+        x < 3 || // Don't place near left edge
+        enemies.some(e => Math.abs(e.position.x - x) < 2 && Math.abs(e.position.y - y) < 2);
+        
+      if (!isTooClose) break;
+    } while (attempts < maxAttempts);
     
     if (attempts >= maxAttempts) continue;
     
@@ -159,9 +163,10 @@ export function generateEnemies(
     const difficultyModifier = difficulty === "easy" ? 0.8 : 
                               difficulty === "medium" ? 1 : 1.2;
     
-    // Create enemy object
+    // Create enemy object with unique ID
     const enemy: Enemy = {
-      type: selectedType as "wolf" | "bear" | "snake" | "scorpion" | "bandit",
+      id: uuidv4(),
+      type: selectedType as EnemyType,
       health: Math.floor(health * difficultyModifier),
       maxHealth: Math.floor(health * difficultyModifier),
       damage: Math.floor(damage * difficultyModifier),
