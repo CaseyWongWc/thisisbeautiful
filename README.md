@@ -75,5 +75,6 @@ A survival game where players navigate from west to east through various terrain
 - Reference the original Java version when appropriate for understanding complex mechanics
 
 ## User Suggestions
-
+file path for prompt.txt is provided here:
+attached_assets/prompt.txt
 <!-- Add user suggestions here as they come up -->

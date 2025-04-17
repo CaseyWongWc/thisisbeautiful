@@ -371,12 +371,13 @@ const Game: React.FC = () => {
     if (!combat.inCombat || !combat.enemy) return;
     
     // Calculate combat results
-    const { 
-      updatedPlayerStats, 
-      updatedEnemy, 
-      playerDamage, 
+    const result = simulateCombatTurn(playerStats, combat.enemy);
+    const {
+      updatedPlayerStats,
+      updatedEnemy,
+      playerDamage,
       enemyDamage 
-    } = simulateCombatTurn(playerStats, combat.enemy);
+    } = result;
     
     // Update stats
     setPlayerStats(updatedPlayerStats);

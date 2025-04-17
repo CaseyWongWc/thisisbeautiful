@@ -164,11 +164,12 @@ export function generateEnemies(
                               difficulty === "medium" ? 1 : 1.2;
     
     // Create enemy object with unique ID
+    const finalHealth = Math.floor(health * difficultyModifier);
     const enemy: Enemy = {
       id: uuidv4(),
       type: selectedType as EnemyType,
-      health: Math.floor(health * difficultyModifier),
-      maxHealth: Math.floor(health * difficultyModifier),
+      health: finalHealth,
+      maxHealth: finalHealth,
       damage: Math.floor(damage * difficultyModifier),
       isDefeated: false,
       reward: {
