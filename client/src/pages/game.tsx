@@ -45,6 +45,7 @@ const Game: React.FC = () => {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [grid, setGrid] = useState<Cell[][]>([]);
   const [playerPosition, setPlayerPosition] = useState<Position>({ x: 0, y: 0 });
+  const [isAIPlayer, setIsAIPlayer] = useState<boolean>(true); // Default to AI player mode
   const [playerStats, setPlayerStats] = useState<PlayerStats>({
     currentStrength: 0,
     maxStrength: 0,
@@ -497,24 +498,154 @@ const Game: React.FC = () => {
     });
   };
   
+  // Handle AI combat automatically
+  const handleAICombat = (enemy: Enemy) => {
+    // Use brain to make combat decision
+    const combatState: Combat = {
+      inCombat: true,
+      enemy,
+      playerDamage: 0,
+      enemyDamage: 0,
+      turnsLeft: 5
+    };
+    
+    const decision = brainRef.current.makeCombatDecision(
+      playerStats,
+      enemy,
+      combatState
+    );
+    
+    // Log AI decision
+    addDecision(`AI combat decision: ${decision.action} - ${decision.reason}`, playerStats);
+    
+    if (decision.action === 'attack') {
+      // Simulate the combat turns automatically
+      let simulatedPlayerStats = { ...playerStats };
+      let simulatedEnemy = { ...enemy };
+      let battleLog: string[] = [];
+      let turnCount = 0;
+      let playerWon = false;
+      
+      // Simulate up to 5 turns of combat
+      for (let i = 0; i < 5; i++) {
+        turnCount++;
+        
+        // Calculate combat results
+        const result = simulateCombatTurn(simulatedPlayerStats, simulatedEnemy);
+        simulatedPlayerStats = result.updatedPlayerStats;
+        simulatedEnemy = result.updatedEnemy;
+        
+        battleLog.push(`Turn ${i+1}: You dealt ${result.playerDamage} damage and took ${result.enemyDamage} damage.`);
+        
+        // Check if combat is over
+        if (simulatedEnemy.health <= 0) {
+          playerWon = true;
+          break;
+        }
+        
+        if (simulatedPlayerStats.currentStrength <= 0) {
+          break;
+        }
+      }
+      
+      // Apply the final results of combat
+      setPlayerStats(simulatedPlayerStats);
+      
+      // Update the grid to mark enemy as defeated if player won
+      if (playerWon) {
+        const newGrid = [...grid];
+        const x = playerPosition.x;
+        const y = playerPosition.y;
+        
+        if (newGrid[y] && newGrid[y][x] && newGrid[y][x].enemy) {
+          newGrid[y][x].enemy = {
+            ...newGrid[y][x].enemy!,
+            isDefeated: true,
+            health: 0
+          };
+        }
+        setGrid(newGrid);
+        
+        // Collect rewards
+        const updatedStats = collectEnemyReward(simulatedPlayerStats, enemy);
+        setPlayerStats(updatedStats);
+        
+        // Add result to decision log
+        addDecision(`AI defeated ${enemy.type} after ${turnCount} turns and gained ${enemy.reward.amount} ${enemy.reward.type}`, updatedStats);
+        
+        // Show toast
+        toast({
+          title: "AI Combat Victory",
+          description: `Your AI defeated the ${enemy.type} and gained ${enemy.reward.amount} ${enemy.reward.type}.`,
+        });
+      } else {
+        // Add result to decision log if player lost or inconclusive
+        addDecision(`AI combat with ${enemy.type} ended after ${turnCount} turns without victory`, simulatedPlayerStats);
+        
+        // Show toast
+        toast({
+          title: "AI Combat Result",
+          description: `Your AI battled the ${enemy.type} for ${turnCount} turns and survived with ${simulatedPlayerStats.currentStrength} health.`,
+        });
+      }
+    } else {
+      // AI chose to flee
+      addDecision(`AI decided to flee from ${enemy.type} - ${decision.reason}`, playerStats);
+      
+      // 70% chance to flee successfully for AI (better than player's 50%)
+      const fleeSuccess = Math.random() > 0.3;
+      
+      if (fleeSuccess) {
+        // Successfully fled
+        toast({
+          title: "AI Escaped",
+          description: `Your AI successfully fled from the ${enemy.type}.`,
+        });
+      } else {
+        // Failed to flee, take damage
+        const damage = Math.max(1, Math.floor(enemy.damage / 2));
+        const updatedStats = {
+          ...playerStats,
+          currentStrength: Math.max(0, playerStats.currentStrength - damage)
+        };
+        
+        setPlayerStats(updatedStats);
+        addDecision(`AI failed to flee and took ${damage} damage`, updatedStats);
+        
+        toast({
+          title: "AI Failed to Escape",
+          description: `Your AI tried to flee from the ${enemy.type} but failed and took ${damage} damage.`,
+        });
+      }
+    }
+    
+    // Resume game after AI handles combat
+    setIsRunning(true);
+  };
+
   // Check for enemy at the current cell
   const checkForEnemy = () => {
     const cell = getCell(grid, playerPosition);
     if (cell && cell.enemy && !cell.enemy.isDefeated) {
-      // Start combat
-      setCombat({
-        inCombat: true,
-        enemy: cell.enemy,
-        playerDamage: 0,
-        enemyDamage: 0,
-        turnsLeft: 5 // Set number of combat turns
-      });
-      
-      // Stop game loop while in combat
-      setIsRunning(false);
-      
       // Add decision
       addDecision(`Encountered a ${cell.enemy.type}`, playerStats);
+      
+      if (isAIPlayer) {
+        // AI player handles combat automatically
+        handleAICombat(cell.enemy);
+      } else {
+        // Human player gets the combat UI
+        setCombat({
+          inCombat: true,
+          enemy: cell.enemy,
+          playerDamage: 0,
+          enemyDamage: 0,
+          turnsLeft: 5 // Set number of combat turns
+        });
+        
+        // Stop game loop while in combat
+        setIsRunning(false);
+      }
     }
   };
   
@@ -530,6 +661,27 @@ const Game: React.FC = () => {
         onDifficultyChange={handleDifficultyChange}
         onNewGame={handleNewGame}
       />
+      
+      {/* AI/Human Player Toggle */}
+      <div className="mb-4 flex items-center justify-center">
+        <div className="bg-slate-100 p-2 rounded-lg flex items-center gap-3">
+          <span className={`font-medium ${!isAIPlayer ? "text-primary" : "text-gray-500"}`}>
+            Human Player
+          </span>
+          <Button
+            variant={isAIPlayer ? "default" : "outline"}
+            onClick={() => setIsAIPlayer(!isAIPlayer)}
+            className="relative rounded-full h-6 px-4"
+          >
+            <span className="sr-only">Toggle Player Mode</span>
+            <span className={`absolute inset-0 rounded-full transition-all ${isAIPlayer ? 'bg-primary' : 'bg-gray-200'}`} />
+            <span className={`absolute ${isAIPlayer ? 'right-1' : 'left-1'} top-1 size-4 rounded-full bg-white transition-all`} />
+          </Button>
+          <span className={`font-medium ${isAIPlayer ? "text-primary" : "text-gray-500"}`}>
+            AI Player
+          </span>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-[1fr,400px] gap-8">
         <GameBoard 
