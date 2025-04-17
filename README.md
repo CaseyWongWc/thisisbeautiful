@@ -1,5 +1,13 @@
 # Wilderness Survival System (WSS) Game
 
+> **IMPORTANT FOR ALL AGENTS**: Please review this README before starting work on this project. This document serves as our central reference for tracking progress, issues, and plans. After implementing changes, update the relevant sections.
+>
+> **File Organization:**
+> - `shared/schema.ts`: Contains data models and interfaces for the entire project
+> - `client/src/lib/game/`: Game logic (terrain, mapping, AI, combat, etc.)
+> - `client/src/components/game/`: React UI components
+> - `client/src/pages/game.tsx`: Main game page with state management
+
 A survival game where players navigate from west to east through various terrains, managing resources, trading with NPCs, and battling enemies.
 
 ## Completed Features ✅
@@ -49,6 +57,22 @@ A survival game where players navigate from west to east through various terrain
 - [ ] Optimize enemy spawning algorithm for better performance
 - [ ] Add comprehensive unit tests
 - [ ] Better error handling for edge cases
+
+## Communication Guidelines
+
+- When requesting changes, be specific about which feature or component you want to modify
+- Before implementing major changes, confirm with the user first
+- If encountering issues or errors, document them clearly in the "Known Issues" section
+- Reference specific files when discussing code changes
+- Focus on one feature/change at a time to avoid introducing multiple issues
+
+## Project Context 
+
+- This project is based on a previous Java implementation that was more complex
+- Future goals include implementing spawners for items and NPCs
+- The project is sensitive to changes - avoid making untested modifications
+- When in doubt about implementation details, ask for clarification rather than making assumptions
+- Reference the original Java version when appropriate for understanding complex mechanics
 
 ## User Suggestions
 
