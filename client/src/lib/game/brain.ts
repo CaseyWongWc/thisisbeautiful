@@ -1,7 +1,8 @@
-import { Cell, Position, PlayerStats, Decision, BrainStrategy } from "@shared/schema";
+import { Cell, Position, PlayerStats, Decision, BrainStrategy, Combat, Enemy } from "@shared/schema";
 import { Vision } from "./vision";
 import { findPath } from "./map";
 import { canMoveToCell } from "./player";
+import { simulateCombatTurn } from "./enemy";
 
 export interface Brain {
   strategy: BrainStrategy;
@@ -11,6 +12,13 @@ export interface Brain {
     playerStats: PlayerStats,
     vision: Vision
   ) => { nextPosition: Position; decision: Decision };
+  
+  // New method for AI combat decisions
+  makeCombatDecision: (
+    playerStats: PlayerStats,
+    enemy: Enemy,
+    combat: Combat
+  ) => { action: 'attack' | 'flee'; reason: string };
 }
 
 // Predefined strategies
@@ -20,28 +28,50 @@ export const BRAIN_STRATEGIES: Record<string, BrainStrategy> = {
     prioritizeWater: 0.25,
     prioritizeFood: 0.25,
     prioritizeGold: 0.15,
-    prioritizeEastward: 0.35
+    prioritizeEastward: 0.35,
+    avoidEnemies: 0.5,
+    combatAggression: 0.5,
+    minHealthThreshold: 0.4
   },
   survival: {
     name: "Survival",
     prioritizeWater: 0.4,
     prioritizeFood: 0.4,
     prioritizeGold: 0.05,
-    prioritizeEastward: 0.15
+    prioritizeEastward: 0.15,
+    avoidEnemies: 0.8,
+    combatAggression: 0.2,
+    minHealthThreshold: 0.6
   },
   explorer: {
     name: "Explorer",
     prioritizeWater: 0.2,
     prioritizeFood: 0.2,
     prioritizeGold: 0.1,
-    prioritizeEastward: 0.5
+    prioritizeEastward: 0.5,
+    avoidEnemies: 0.4,
+    combatAggression: 0.6,
+    minHealthThreshold: 0.3
   },
   collector: {
     name: "Collector",
     prioritizeWater: 0.2,
     prioritizeFood: 0.2,
     prioritizeGold: 0.4,
-    prioritizeEastward: 0.2
+    prioritizeEastward: 0.2,
+    avoidEnemies: 0.3,
+    combatAggression: 0.7,
+    minHealthThreshold: 0.3
+  },
+  aggressive: {
+    name: "Aggressive",
+    prioritizeWater: 0.15,
+    prioritizeFood: 0.15,
+    prioritizeGold: 0.3,
+    prioritizeEastward: 0.4,
+    avoidEnemies: 0.1,
+    combatAggression: 0.9,
+    minHealthThreshold: 0.2
   }
 };
 
@@ -181,5 +211,112 @@ export class BasicBrain implements Brain {
     };
     
     return { nextPosition, decision };
+  }
+  
+  /**
+   * Decides whether to attack an enemy or flee based on strategy parameters,
+   * player stats, and enemy stats.
+   */
+  makeCombatDecision(
+    playerStats: PlayerStats,
+    enemy: Enemy,
+    combat: Combat
+  ): { action: 'attack' | 'flee'; reason: string } {
+    // Get current health percentage
+    const healthPercentage = playerStats.currentStrength / playerStats.maxStrength;
+    
+    // Check if health is below minimum threshold for combat
+    if (healthPercentage < this.strategy.minHealthThreshold) {
+      return {
+        action: 'flee',
+        reason: `Health too low (${Math.round(healthPercentage * 100)}%), below threshold of ${Math.round(this.strategy.minHealthThreshold * 100)}%`
+      };
+    }
+    
+    // Simulate several combat turns to predict outcome
+    let simulatedPlayerStats = { ...playerStats };
+    let simulatedEnemy = { ...enemy };
+    let playerWillWin = false;
+    let turnsToWin = 0;
+    let expectedHealthAfterCombat = playerStats.currentStrength;
+    
+    // Simulate up to 10 combat turns to see if player would win
+    for (let i = 0; i < 10; i++) {
+      const result = simulateCombatTurn(simulatedPlayerStats, simulatedEnemy);
+      simulatedPlayerStats = result.updatedPlayerStats;
+      simulatedEnemy = result.updatedEnemy;
+      turnsToWin++;
+      
+      // If enemy is defeated in simulation
+      if (simulatedEnemy.health <= 0) {
+        playerWillWin = true;
+        expectedHealthAfterCombat = simulatedPlayerStats.currentStrength;
+        break;
+      }
+      
+      // If player would die in simulation
+      if (simulatedPlayerStats.currentStrength <= 0) {
+        playerWillWin = false;
+        expectedHealthAfterCombat = 0;
+        break;
+      }
+    }
+    
+    // Calculate reward value based on enemy type and reward amount
+    const rewardValue = enemy.reward.amount;
+    
+    // Calculate cost-benefit ratio of the combat
+    const healthLost = playerStats.currentStrength - expectedHealthAfterCombat;
+    const healthLostPercentage = healthLost / playerStats.maxStrength;
+    
+    // Reward-to-damage ratio (higher is better)
+    const rewardToDamageRatio = playerWillWin ? rewardValue / Math.max(1, healthLost) : 0;
+    
+    // Apply combat aggression factor from strategy
+    const aggressionModifier = this.strategy.combatAggression;
+    
+    // Make decision based on factors
+    let shouldAttack = false;
+    let reason = "";
+    
+    if (playerWillWin && healthLostPercentage < 0.1) {
+      // Easy win with minimal damage
+      shouldAttack = true;
+      reason = `Easy win with minimal damage (${Math.round(healthLostPercentage * 100)}% health loss)`;
+    } else if (playerWillWin && rewardToDamageRatio > 0.5) {
+      // Good reward-to-damage ratio
+      shouldAttack = true;
+      reason = `Favorable reward (${rewardValue}) to damage (${Math.round(healthLost)}) ratio`;
+    } else if (playerWillWin && aggressionModifier > 0.7) {
+      // Aggressive strategy favors combat even if costly
+      shouldAttack = true;
+      reason = `Aggressive strategy chooses to fight despite risks`;
+    } else if (playerWillWin && rewardToDamageRatio > 0.2 && aggressionModifier > 0.4) {
+      // Moderate aggression with acceptable reward
+      shouldAttack = true;
+      reason = `Acceptable risk for reward with ${this.strategy.name} strategy`;
+    } else if (!playerWillWin) {
+      // Will lose the fight
+      shouldAttack = false;
+      reason = `Combat simulation predicts defeat`;
+    } else {
+      // Default - not worth the risk
+      shouldAttack = false;
+      reason = `Reward not worth the health loss`;
+    }
+    
+    // Random chance to override based on strategy aggression 
+    // (introduces some unpredictability to decisions)
+    if (Math.random() < aggressionModifier * 0.2) {
+      if (!shouldAttack && playerWillWin) {
+        shouldAttack = true;
+        reason = `Taking a calculated risk with ${this.strategy.name} strategy`;
+      }
+    }
+    
+    return {
+      action: shouldAttack ? 'attack' : 'flee',
+      reason
+    };
   }
 }

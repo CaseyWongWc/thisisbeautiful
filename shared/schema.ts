@@ -132,4 +132,6 @@ export interface BrainStrategy {
   prioritizeGold: number;
   prioritizeEastward: number;
   avoidEnemies: number;
+  combatAggression: number;  // How likely AI is to fight vs flee (0-1)
+  minHealthThreshold: number; // Minimum health % to engage in combat
 }
