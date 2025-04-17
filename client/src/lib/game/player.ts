@@ -17,7 +17,9 @@ export function createPlayerStats(difficulty: "easy" | "medium" | "hard"): Playe
         currentStrength: 100,
         currentWater: 100,
         currentFood: 100,
-        gold: 30
+        gold: 30,
+        damage: 15,
+        defense: 10
       };
       break;
     case "medium":
@@ -25,7 +27,9 @@ export function createPlayerStats(difficulty: "easy" | "medium" | "hard"): Playe
         currentStrength: 80,
         currentWater: 70,
         currentFood: 70,
-        gold: 20
+        gold: 20,
+        damage: 12,
+        defense: 8
       };
       break;
     case "hard":
@@ -33,7 +37,9 @@ export function createPlayerStats(difficulty: "easy" | "medium" | "hard"): Playe
         currentStrength: 60,
         currentWater: 50,
         currentFood: 50,
-        gold: 10
+        gold: 10,
+        damage: 10,
+        defense: 5
       };
       break;
   }
@@ -108,4 +114,51 @@ export function consumeItem(
   }
   
   return newStats;
+}
+
+// Upgrade player equipment with gold
+export function upgradePlayer(
+  stats: PlayerStats, 
+  upgradeType: "damage" | "defense"
+): PlayerStats {
+  const newStats = { ...stats };
+  const baseCost = upgradeType === "damage" ? 15 : 10;
+  
+  // Calculate cost based on current level
+  const currentLevel = upgradeType === "damage" ? stats.damage : stats.defense;
+  const cost = baseCost + Math.floor(currentLevel / 2) * 5;
+  
+  if (stats.gold >= cost) {
+    newStats.gold -= cost;
+    
+    if (upgradeType === "damage") {
+      newStats.damage += 2;
+    } else {
+      newStats.defense += 1;
+    }
+  }
+  
+  return newStats;
+}
+
+// Check if player can afford an upgrade
+export function canAffordUpgrade(
+  stats: PlayerStats,
+  upgradeType: "damage" | "defense"
+): boolean {
+  const baseCost = upgradeType === "damage" ? 15 : 10;
+  const currentLevel = upgradeType === "damage" ? stats.damage : stats.defense;
+  const cost = baseCost + Math.floor(currentLevel / 2) * 5;
+  
+  return stats.gold >= cost;
+}
+
+// Get upgrade cost
+export function getUpgradeCost(
+  stats: PlayerStats,
+  upgradeType: "damage" | "defense"
+): number {
+  const baseCost = upgradeType === "damage" ? 15 : 10;
+  const currentLevel = upgradeType === "damage" ? stats.damage : stats.defense;
+  return baseCost + Math.floor(currentLevel / 2) * 5;
 }

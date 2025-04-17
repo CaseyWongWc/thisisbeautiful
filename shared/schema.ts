@@ -28,6 +28,16 @@ export const terrainTypeSchema = z.enum([
 
 export type TerrainType = z.infer<typeof terrainTypeSchema>;
 
+export const enemyTypeSchema = z.enum([
+  "wolf",
+  "bear",
+  "snake",
+  "scorpion",
+  "bandit"
+]);
+
+export type EnemyType = z.infer<typeof enemyTypeSchema>;
+
 export interface TerrainCost {
   movement: number;
   water: number;
@@ -44,6 +54,7 @@ export interface Cell {
   position: Position;
   item?: Item;
   trader?: Trader;
+  enemy?: Enemy;
   isPath?: boolean;
 }
 
@@ -67,6 +78,27 @@ export interface TradeOffer {
   cost: number;
 }
 
+export interface Enemy {
+  id: string;
+  type: EnemyType;
+  health: number;
+  maxHealth: number;
+  damage: number;
+  reward: {
+    type: "food" | "water" | "gold";
+    amount: number;
+  };
+  isDefeated: boolean;
+}
+
+export interface Combat {
+  inCombat: boolean;
+  enemy?: Enemy;
+  playerDamage: number;
+  enemyDamage: number;
+  turnsLeft: number;
+}
+
 export interface PlayerStats {
   currentStrength: number;
   maxStrength: number;
@@ -75,6 +107,8 @@ export interface PlayerStats {
   currentFood: number;
   maxFood: number;
   gold: number;
+  damage: number;
+  defense: number;
 }
 
 export interface GameSettings {
@@ -97,4 +131,5 @@ export interface BrainStrategy {
   prioritizeFood: number;
   prioritizeGold: number;
   prioritizeEastward: number;
+  avoidEnemies: number;
 }
