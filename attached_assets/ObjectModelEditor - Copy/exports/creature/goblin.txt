@@ -1,0 +1,13 @@
+#Creature: Goblin
+#Sat Apr 06 00:00:00 UTC 2025
+type=Creature
+name=Goblin
+description=A small, green-skinned creature that likes to cause trouble.
+imagePath=resources/ICONDUMP/creature.png/icons/000000/transparent/1x1/delapouite/goblin-head.png
+health=30
+attack=10
+defense=3
+aggro=true
+movementPatternId=random_wander
+inventory=
+difficulties=Easy,Medium,Hard

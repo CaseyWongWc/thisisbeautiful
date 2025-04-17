@@ -1,0 +1,10 @@
+#Terrain: grass
+#Sun Apr 06 07:10:26 GMT 2025
+description=Grass
+goldCost=0
+hungerCost=0
+imagePath=/home/runner/workspace/resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/delapouite/grass.png
+movementCost=0
+name=grass
+strengthCost=0
+thirstCost=0

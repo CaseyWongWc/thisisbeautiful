@@ -1,0 +1,11 @@
+#Terrain: Desert
+#Sun Apr 06 10:22:00 GMT 2025
+description=Hot, dry desert
+goldCost=0
+hungerCost=1
+imagePath=resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/delapouite/dunes.png
+movementCost=2
+name=Desert
+strengthCost=1
+thirstCost=2
+type=hot

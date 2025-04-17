@@ -1,0 +1,11 @@
+#Creature: hello
+#Sat Apr 05 04:50:01 GMT 2025
+description=hello
+difficulties=1,2,3
+goldPenalty=0
+imagePath=/home/runner/workspace/resources/images/one.png
+itemDrop=Healing Potion
+movement=hello
+name=hello
+strengthPenalty=30
+waterPenalty=0

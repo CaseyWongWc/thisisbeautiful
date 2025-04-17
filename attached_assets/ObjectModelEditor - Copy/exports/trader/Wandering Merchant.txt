@@ -1,0 +1,5 @@
+#Trader: Wandering Merchant
+#Sun Apr 06 22:45:32 GMT 2025
+description=A mysterious trader who travels the wasteland offering rare goods.
+imagePath=resources/images/traders/merchant.png
+name=Wandering Merchant

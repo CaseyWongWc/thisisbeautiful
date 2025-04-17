@@ -1,0 +1,23 @@
+#Trader: Merchant
+#Sat Apr 05 08:04:30 GMT 2025
+aggroDialogue=How dare you try to cheat me\! Leave now\!
+aggroOnMaxReject=false
+description=A friendly trader who sells various items for gold.
+encounterDialogue=Hello traveler\! I have many fine wares to trade.
+foodPenalty=0
+imagePath=/home/runner/workspace/resources/images/traders/trader.png
+isAggro=false
+leaveTradeDialogue=Safe travels, my friend\!
+maxAggroDuration=60
+maxOffersBeforeDecline=5
+maxPlayerResourcePercentage=1.0
+minPlayerResourcePercentage=0.0
+name=Merchant
+passiveMovement=Village Circle
+positiveDialogue=Thank you for your business\! Hope to see you again soon.
+stealSuccessRate=0.1
+strengthPenalty=0
+tradeEventDialogue=Would you like to trade for any of my items?
+tradeOffers=Healing Potion,Water Flask,Gold Ring
+type=Trader
+waterPenalty=0

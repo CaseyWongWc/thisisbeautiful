@@ -1,0 +1,8 @@
+#Movement: new
+#Sat Apr 05 04:21:32 GMT 2025
+directions=
+moveInterval=1
+name=new
+random=false
+repeating=false
+reversible=false

@@ -1,0 +1,9 @@
+#Creature: deer
+#Sat Apr 05 04:01:10 GMT 2025
+description=Description of new creature
+difficulties=
+goldPenalty=0
+imagePath=
+name=deer
+strengthPenalty=0
+waterPenalty=0

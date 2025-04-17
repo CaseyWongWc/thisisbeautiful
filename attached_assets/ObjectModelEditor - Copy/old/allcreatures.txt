@@ -1,0 +1,4 @@
+name|description|strengthPenalty|waterPenalty|goldPenalty|difficulties|imagePath|colorR|colorG|colorB|movementPattern|containsItem
+Wolf|A wild wolf that hunts in the forest|15|0|0|Easy,Medium,Hard||100|100|100||
+Bear|A large bear roaming the mountains|25|0|0|Medium,Hard,Expert||139|69|19||
+Bandit|A hostile human bandit|10|5|15|Easy,Medium,Hard,Expert||50|0|0||

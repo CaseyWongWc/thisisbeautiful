@@ -1,0 +1,11 @@
+#Terrain: Desert
+#Sat Apr 06 00:00:00 UTC 2025
+type=Terrain
+name=Desert
+description=A hot, arid desert with sand dunes and sparse vegetation.
+imagePath=resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/delapouite/desert.png
+movementCost=2
+strengthCost=1
+thirstCost=3
+goldCost=0
+difficulties=Medium,Hard

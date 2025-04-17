@@ -1,0 +1,8 @@
+
+type=Creature
+name=Example Creature
+description=A basic example creature
+strengthPenalty=5
+waterPenalty=3
+goldPenalty=2
+difficulties=1,2,3

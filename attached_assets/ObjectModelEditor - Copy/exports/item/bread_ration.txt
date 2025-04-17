@@ -1,0 +1,11 @@
+#Item: Bread Ration
+#Sat Apr 06 00:00:00 UTC 2025
+type=Item
+name=Bread Ration
+description=A loaf of nutritious bread that will keep you going.
+imagePath=resources/ICONDUMP/food.png/icons/ffffff/transparent/1x1/delapouite/bread.png
+foodValue=20
+goldValue=15
+waterValue=0
+strengthValue=5
+difficulties=Easy,Medium,Hard

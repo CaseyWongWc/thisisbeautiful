@@ -1,0 +1,8 @@
+#Item: Gold Coin
+#Fri Apr 05 07:35:30 UTC 2025
+goldValue=20
+waterValue=0
+name=Gold Coin
+foodValue=0
+description=A valuable gold coin
+imagePath=resources/gold.png

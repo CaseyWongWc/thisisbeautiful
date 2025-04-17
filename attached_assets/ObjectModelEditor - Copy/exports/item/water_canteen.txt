@@ -1,0 +1,11 @@
+#Item: Water Canteen
+#Sat Apr 06 00:00:00 UTC 2025
+type=Item
+name=Water Canteen
+description=A sturdy canteen filled with fresh water.
+imagePath=resources/ICONDUMP/energy.png/icons/ffffff/transparent/1x1/lorc/bottled-bolt.png
+foodValue=0
+goldValue=30
+waterValue=25
+strengthValue=0
+difficulties=Easy,Medium,Hard

@@ -1,0 +1,8 @@
+#Item: Healing Potion
+#Sat Apr 05 09:41:13 GMT 2025
+description=A magic potion that restores health.
+foodValue=30
+goldValue=50
+imagePath=resources/potion.png
+name=Healing Potion
+waterValue=0

@@ -1,0 +1,10 @@
+#Game Item Properties
+#Fri Apr 05 08:24:22 UTC 2025
+id=dried-rations
+name=Dried Rations
+description=Long-lasting food for your journey.
+imagePath=resources/images/items/rations.png
+goldValue=10
+waterValue=0
+foodValue=15
+strengthValue=0

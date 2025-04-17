@@ -1,0 +1,6 @@
+name|type|value|repeatable|foodValue|waterValue|description|isBuiltIn|colorR|colorG|colorB|difficulties
+Apple|Food|2|true|5|0|A fresh, juicy apple. Restores some food.|true|255|0|0|Master,Easy,Medium,Expert,Hard,Impossible
+Water Bottle|Water|3|true|0|10|A bottle of clean water. Restores water levels.|true|0|191|255|Master,Easy,Medium,Expert,Hard,Impossible
+Gold Nugget|Treasure|50|true|0|0|A small gold nugget. Worth a decent amount.|true|255|215|0|Master,Easy,Medium,Expert,Hard,Impossible
+Hunting Knife|Tool|15|false|0|0|A sharp hunting knife. Useful for various tasks.|true|128|128|128|Master,Easy,Medium,Expert,Hard,Impossible
+Map|Special|20|false|0|0|A map of the surrounding area. Reveals parts of the world.|true|210|180|140|Master,Easy,Medium,Expert,Hard,Impossible

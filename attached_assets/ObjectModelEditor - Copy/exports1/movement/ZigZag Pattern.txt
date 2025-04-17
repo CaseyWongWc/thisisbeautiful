@@ -1,0 +1,8 @@
+#Movement: ZigZag Pattern
+#Sat Apr 05 05:54:29 GMT 2025
+directions=E\nNE\nE\nSE
+moveInterval=1
+name=ZigZag Pattern
+random=false
+repeating=true
+reversible=true

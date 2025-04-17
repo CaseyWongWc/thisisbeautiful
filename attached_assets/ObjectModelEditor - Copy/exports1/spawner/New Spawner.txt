@@ -1,0 +1,12 @@
+#Spawner: New Spawner
+#Sat Apr 05 09:43:18 GMT 2025
+description=
+direction=none
+imagePath=
+isDirected=false
+maxSpawnCap=1
+name=New Spawner
+objectTemplate=
+objectType=item
+randomOrientation=false
+spawnFrequency=1

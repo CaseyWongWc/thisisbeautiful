@@ -1,0 +1,10 @@
+#Item: Ration Pack
+#Sat Apr 05 01:13:10 GMT 2025
+description=A pack of dried food and water for long journeys.
+difficulties=Easy,Medium
+foodValue=30
+goldValue=25
+imagePath=resources/images/item/e0d30208-c819-4233-a528-779eb991628e.png
+name=Ration Pack
+type=Item
+waterValue=20

@@ -1,0 +1,8 @@
+#Item: Apple
+#Fri Apr 05 07:35:10 UTC 2025
+goldValue=5
+waterValue=5
+name=Apple
+foodValue=25
+description=A juicy apple
+imagePath=resources/food.png

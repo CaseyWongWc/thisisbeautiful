@@ -1,0 +1,12 @@
+# Item Properties
+name=Dried Meat
+description=Preserved meat that can be stored for long periods.
+type=Item
+value=15
+weight=0.8
+stackCount=1
+imagePath=resources/images/items/dried_meat.png
+usable=true
+consumable=true
+foodRestore=25
+isWeapon=false

@@ -1,0 +1,13 @@
+#Terrain: Mountain
+#Sun Apr 06 00:55:21 GMT 2025
+creatureCount=0
+description=Rugged mountain terrain with steep slopes and rocky outcroppings.
+goldCost=0
+imagePath=resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/lorc/mountains.png
+itemCount=0
+movementCost=3
+name=Mountain
+spawnerCount=0
+strengthCost=2
+thirstCost=2
+traderCount=0

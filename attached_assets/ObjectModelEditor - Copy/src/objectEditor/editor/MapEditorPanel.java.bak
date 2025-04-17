@@ -1,0 +1,982 @@
+package objectEditor.editor;
+
+import objectEditor.model.*;
+import objectEditor.util.FileUtils;
+import objectEditor.util.ImageUtils;
+
+import javax.swing.*;
+import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ListSelectionEvent;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A panel for creating and editing GameMap objects.
+ * Allows resizing the map and editing individual cells.
+ */
+public class MapEditorPanel extends BaseEditorPanel<GameMap> {
+    private GameMap currentMap;
+    private JPanel mapViewPanel;
+    private JScrollPane mapScrollPane;
+    private JTextField nameField;
+    private JTextArea descriptionArea;
+    private JSpinner widthSpinner;
+    private JSpinner heightSpinner;
+    private JButton resizeButton;
+    private JSpinner zoomSpinner;
+    private JComboBox<String> terrainComboBox;
+    private JComboBox<String> entityTypeComboBox;
+    private JComboBox<String> entityNameComboBox;
+    private JLabel terrainThumbnailLabel;
+    private JPanel cellInfoPanel;
+    private JLabel cellInfoLabel;
+    
+    // The cell that's currently being edited
+    private Point selectedCell;
+    
+    // Maps to store loaded objects
+    private List<Item> loadedItems;
+    private List<Creature> loadedCreatures;
+    private List<Spawner> loadedSpawners;
+    private List<Trader> loadedTraders;
+    private List<Terrain> loadedTerrains;
+    
+    // Current editing tool
+    private enum Tool { SELECT, TERRAIN, ENTITY, ERASE }
+    private Tool currentTool = Tool.SELECT;
+    
+    // Current entity for the entity tool
+    private ObjectInstance currentEntity;
+    
+    // Current terrain for the terrain tool
+    private Terrain currentTerrain;
+    
+    // Zoom level
+    private float zoomLevel = 1.0f;
+    
+    /**
+     * Creates a new map editor panel.
+     */
+    public MapEditorPanel() {
+        super("map", "Map");
+        
+        // Initialize collections
+        loadedItems = new ArrayList<>();
+        loadedCreatures = new ArrayList<>();
+        loadedSpawners = new ArrayList<>();
+        loadedTraders = new ArrayList<>();
+        loadedTerrains = new ArrayList<>();
+        
+        initComponents();
+        setupListeners();
+        loadObjects();
+        
+        // Create a default map
+        createNewMap("New Map", 10, 10);
+    }
+    
+    /**
+     * Creates a new map with the given parameters.
+     * 
+     * @param name The name of the map
+     * @param width The width of the map in cells
+     * @param height The height of the map in cells
+     */
+    private void createNewMap(String name, int width, int height) {
+        currentMap = new GameMap(name, width, height);
+        
+        // Initialize with the first terrain if available
+        if (!loadedTerrains.isEmpty()) {
+            currentMap.fillWithTerrain(loadedTerrains.get(0));
+        }
+        
+        // Update UI components
+        updateMapView();
+        nameField.setText(name);
+        widthSpinner.setValue(width);
+        heightSpinner.setValue(height);
+    }
+    
+    /**
+     * Initializes the UI components.
+     */
+    private void initComponents() {
+        // Set up main layout
+        setLayout(new BorderLayout(10, 10));
+        
+        // Top panel - Map properties
+        JPanel propertiesPanel = new JPanel(new BorderLayout(5, 5));
+        propertiesPanel.setBorder(BorderFactory.createTitledBorder("Map Properties"));
+        
+        // Create property fields
+        JPanel fieldPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 2, 2, 2);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        fieldPanel.add(new JLabel("Name:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        nameField = new JTextField(20);
+        fieldPanel.add(nameField, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        fieldPanel.add(new JLabel("Width:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        SpinnerNumberModel widthModel = new SpinnerNumberModel(10, 1, 100, 1);
+        widthSpinner = new JSpinner(widthModel);
+        fieldPanel.add(widthSpinner, gbc);
+        
+        gbc.gridx = 2;
+        gbc.gridy = 1;
+        fieldPanel.add(new JLabel("cells"), gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        fieldPanel.add(new JLabel("Height:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        SpinnerNumberModel heightModel = new SpinnerNumberModel(10, 1, 100, 1);
+        heightSpinner = new JSpinner(heightModel);
+        fieldPanel.add(heightSpinner, gbc);
+        
+        gbc.gridx = 2;
+        gbc.gridy = 2;
+        fieldPanel.add(new JLabel("cells"), gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 3;
+        resizeButton = new JButton("Resize Map");
+        fieldPanel.add(resizeButton, gbc);
+        
+        // Description area
+        gbc.gridx = 3;
+        gbc.gridy = 0;
+        gbc.gridwidth = 1;
+        gbc.gridheight = 4;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        JPanel descPanel = new JPanel(new BorderLayout());
+        descPanel.setBorder(BorderFactory.createTitledBorder("Description"));
+        descriptionArea = new JTextArea(4, 20);
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setWrapStyleWord(true);
+        JScrollPane descScroll = new JScrollPane(descriptionArea);
+        descPanel.add(descScroll, BorderLayout.CENTER);
+        fieldPanel.add(descPanel, gbc);
+        
+        propertiesPanel.add(fieldPanel, BorderLayout.CENTER);
+        
+        // Add properties panel to the top
+        add(propertiesPanel, BorderLayout.NORTH);
+        
+        // Center panel - Map view and tools
+        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
+        
+        // Tools panel (left)
+        JPanel toolsPanel = new JPanel(new BorderLayout(5, 5));
+        toolsPanel.setBorder(BorderFactory.createTitledBorder("Tools"));
+        
+        // Tool buttons
+        JPanel toolButtonsPanel = new JPanel(new GridLayout(4, 1, 5, 5));
+        ButtonGroup toolGroup = new ButtonGroup();
+        
+        JToggleButton selectButton = new JToggleButton("Select");
+        selectButton.setSelected(true); // Default tool
+        selectButton.addActionListener(e -> currentTool = Tool.SELECT);
+        toolGroup.add(selectButton);
+        toolButtonsPanel.add(selectButton);
+        
+        JToggleButton terrainButton = new JToggleButton("Terrain");
+        terrainButton.addActionListener(e -> currentTool = Tool.TERRAIN);
+        toolGroup.add(terrainButton);
+        toolButtonsPanel.add(terrainButton);
+        
+        JToggleButton entityButton = new JToggleButton("Entity");
+        entityButton.addActionListener(e -> currentTool = Tool.ENTITY);
+        toolGroup.add(entityButton);
+        toolButtonsPanel.add(entityButton);
+        
+        JToggleButton eraseButton = new JToggleButton("Erase");
+        eraseButton.addActionListener(e -> currentTool = Tool.ERASE);
+        toolGroup.add(eraseButton);
+        toolButtonsPanel.add(eraseButton);
+        
+        toolsPanel.add(toolButtonsPanel, BorderLayout.NORTH);
+        
+        // Terrain selection panel
+        JPanel terrainPanel = new JPanel(new BorderLayout(5, 5));
+        terrainPanel.setBorder(BorderFactory.createTitledBorder("Terrain"));
+        
+        // Add a more descriptive label
+        JLabel terrainLabel = new JLabel("Select Terrain Type:");
+        terrainLabel.setToolTipText("Choose the terrain type to place on the map");
+        terrainPanel.add(terrainLabel, BorderLayout.NORTH);
+        
+        // Create the terrain combo box with a custom renderer
+        terrainComboBox = new JComboBox<>();
+        terrainComboBox.setToolTipText("Available terrain types");
+        terrainPanel.add(terrainComboBox, BorderLayout.CENTER);
+        
+        // Terrain thumbnail
+        terrainThumbnailLabel = new JLabel();
+        terrainThumbnailLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        terrainThumbnailLabel.setPreferredSize(new Dimension(100, 100));
+        terrainThumbnailLabel.setBorder(BorderFactory.createEtchedBorder());
+        terrainThumbnailLabel.setText("No terrain selected");
+        
+        // Improved thumbnail panel
+        JPanel thumbnailPanel = new JPanel(new BorderLayout());
+        thumbnailPanel.setBorder(BorderFactory.createTitledBorder("Terrain Preview"));
+        thumbnailPanel.add(terrainThumbnailLabel, BorderLayout.CENTER);
+        
+        // Add buttons for managing terrain
+        JPanel terrainButtonPanel = new JPanel(new GridLayout(1, 2, 5, 0));
+        JButton setTerrainButton = new JButton("Set Terrain");
+        setTerrainButton.setToolTipText("Apply selected terrain to the current cell");
+        setTerrainButton.addActionListener(e -> {
+            if (selectedCell != null && currentTerrain != null && currentMap != null) {
+                currentMap.setTerrain(selectedCell.x, selectedCell.y, currentTerrain);
+                updateMapView();
+                updateCellInfoPanel();
+            }
+        });
+        terrainButtonPanel.add(setTerrainButton);
+        
+        thumbnailPanel.add(terrainButtonPanel, BorderLayout.SOUTH);
+        terrainPanel.add(thumbnailPanel, BorderLayout.SOUTH);
+        
+        // Entity selection panel
+        JPanel entityPanel = new JPanel(new BorderLayout(5, 5));
+        entityPanel.setBorder(BorderFactory.createTitledBorder("Entity"));
+        
+        JPanel entitySelectionPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints entityGbc = new GridBagConstraints();
+        entityGbc.insets = new Insets(2, 2, 2, 2);
+        entityGbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        entityGbc.gridx = 0;
+        entityGbc.gridy = 0;
+        entitySelectionPanel.add(new JLabel("Entity Type:"), entityGbc);
+        
+        entityGbc.gridx = 0;
+        entityGbc.gridy = 1;
+        String[] entityTypes = {"Item", "Creature", "Trader", "Spawner"};
+        entityTypeComboBox = new JComboBox<>(entityTypes);
+        entityTypeComboBox.addActionListener(e -> updateEntityNameComboBox());
+        entitySelectionPanel.add(entityTypeComboBox, entityGbc);
+        
+        entityGbc.gridx = 0;
+        entityGbc.gridy = 2;
+        entitySelectionPanel.add(new JLabel("Entity Name:"), entityGbc);
+        
+        entityGbc.gridx = 0;
+        entityGbc.gridy = 3;
+        entityNameComboBox = new JComboBox<>();
+        entitySelectionPanel.add(entityNameComboBox, entityGbc);
+        
+        entityPanel.add(entitySelectionPanel, BorderLayout.CENTER);
+        
+        // Add terrain and entity panels to tools panel
+        JPanel selectionPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+        selectionPanel.add(terrainPanel);
+        selectionPanel.add(entityPanel);
+        toolsPanel.add(selectionPanel, BorderLayout.CENTER);
+        
+        // Cell info panel
+        cellInfoPanel = new JPanel(new BorderLayout(5, 5));
+        cellInfoPanel.setBorder(BorderFactory.createTitledBorder("Cell Information"));
+        cellInfoLabel = new JLabel("No cell selected");
+        cellInfoPanel.add(cellInfoLabel, BorderLayout.CENTER);
+        toolsPanel.add(cellInfoPanel, BorderLayout.SOUTH);
+        
+        // Map view panel (center)
+        JPanel mapPanel = new JPanel(new BorderLayout(5, 5));
+        mapPanel.setBorder(BorderFactory.createTitledBorder("Map View"));
+        
+        // Map view with scroll pane
+        mapViewPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (currentMap != null) {
+                    // Draw the map
+                    currentMap.render(g, 0, 0, zoomLevel);
+                    
+                    // Draw grid lines
+                    g.setColor(Color.GRAY);
+                    int cellSize = (int)(currentMap.getCellSize() * zoomLevel);
+                    for (int x = 0; x <= currentMap.getWidth(); x++) {
+                        g.drawLine(x * cellSize, 0, x * cellSize, currentMap.getHeight() * cellSize);
+                    }
+                    for (int y = 0; y <= currentMap.getHeight(); y++) {
+                        g.drawLine(0, y * cellSize, currentMap.getWidth() * cellSize, y * cellSize);
+                    }
+                    
+                    // Highlight selected cell
+                    if (selectedCell != null) {
+                        g.setColor(new Color(255, 255, 0, 100)); // Semi-transparent yellow
+                        g.fillRect(
+                            selectedCell.x * cellSize,
+                            selectedCell.y * cellSize,
+                            cellSize,
+                            cellSize
+                        );
+                    }
+                }
+            }
+        };
+        
+        // Set the preferred size based on the map size and zoom level
+        updateMapViewSize();
+        
+        mapScrollPane = new JScrollPane(mapViewPanel);
+        mapPanel.add(mapScrollPane, BorderLayout.CENTER);
+        
+        // Zoom control
+        JPanel zoomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        zoomPanel.add(new JLabel("Zoom:"));
+        SpinnerNumberModel zoomModel = new SpinnerNumberModel(100, 10, 400, 10);
+        zoomSpinner = new JSpinner(zoomModel);
+        zoomSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                zoomLevel = ((Number)zoomSpinner.getValue()).intValue() / 100.0f;
+                updateMapViewSize();
+                mapViewPanel.repaint();
+            }
+        });
+        zoomPanel.add(zoomSpinner);
+        zoomPanel.add(new JLabel("%"));
+        mapPanel.add(zoomPanel, BorderLayout.SOUTH);
+        
+        // Add panels to center panel
+        centerPanel.add(toolsPanel, BorderLayout.WEST);
+        centerPanel.add(mapPanel, BorderLayout.CENTER);
+        
+        // Add center panel to main layout
+        add(centerPanel, BorderLayout.CENTER);
+    }
+    
+    /**
+     * Updates the map view panel size based on the current map and zoom level.
+     */
+    private void updateMapViewSize() {
+        if (currentMap != null) {
+            int cellSize = (int)(currentMap.getCellSize() * zoomLevel);
+            int width = currentMap.getWidth() * cellSize;
+            int height = currentMap.getHeight() * cellSize;
+            mapViewPanel.setPreferredSize(new Dimension(width, height));
+            mapViewPanel.revalidate();
+        }
+    }
+    
+    /**
+     * Updates the map view to reflect the current map state.
+     */
+    private void updateMapView() {
+        updateMapViewSize();
+        mapViewPanel.repaint();
+    }
+    
+    /**
+     * Updates the cell information panel based on the selected cell.
+     */
+    private void updateCellInfo() {
+        if (selectedCell != null && currentMap != null) {
+            MapCell cell = currentMap.getCell(selectedCell.x, selectedCell.y);
+            if (cell != null) {
+                StringBuilder info = new StringBuilder("<html>");
+                info.append("Position: (").append(selectedCell.x).append(", ").append(selectedCell.y).append(")<br>");
+                
+                Terrain terrain = cell.getTerrain();
+                if (terrain != null) {
+                    info.append("Terrain: ").append(terrain.getName()).append("<br>");
+                } else {
+                    info.append("Terrain: None<br>");
+                }
+                
+                int entityCount = cell.getEntities().size();
+                info.append("Entities: ").append(entityCount).append("<br>");
+                
+                if (entityCount > 0) {
+                    info.append("Entity List:<br>");
+                    for (ObjectInstance entity : cell.getEntities()) {
+                        String typeName = "Unknown";
+                        if (entity instanceof Item) typeName = "Item";
+                        else if (entity instanceof Creature) typeName = "Creature";
+                        else if (entity instanceof Trader) typeName = "Trader";
+                        else if (entity instanceof Spawner) typeName = "Spawner";
+                        
+                        info.append("- ").append(typeName).append(": ").append(entity.getName()).append("<br>");
+                    }
+                }
+                
+                info.append("</html>");
+                cellInfoLabel.setText(info.toString());
+            } else {
+                cellInfoLabel.setText("Cell out of bounds");
+            }
+        } else {
+            cellInfoLabel.setText("No cell selected");
+        }
+    }
+    
+    /**
+     * Updates the terrain thumbnail with the image from the selected terrain.
+     * 
+     * @param terrain The terrain to display
+     */
+    private void updateTerrainThumbnail(Terrain terrain) {
+        if (terrain != null && terrain.getImagePath() != null && !terrain.getImagePath().isEmpty()) {
+            ImageIcon icon = ImageUtils.loadImageIcon(terrain.getImagePath());
+            if (icon != null) {
+                // Resize the icon to fit the thumbnail
+                Image img = icon.getImage();
+                Image resizedImg = img.getScaledInstance(80, 80, Image.SCALE_SMOOTH);
+                terrainThumbnailLabel.setIcon(new ImageIcon(resizedImg));
+                terrainThumbnailLabel.setText("");
+            } else {
+                terrainThumbnailLabel.setIcon(null);
+                terrainThumbnailLabel.setText("No image");
+            }
+        } else {
+            terrainThumbnailLabel.setIcon(null);
+            terrainThumbnailLabel.setText("No terrain selected");
+        }
+    }
+    
+    /**
+     * Sets up the event listeners for the UI components.
+     */
+    private void setupListeners() {
+        // Resize button
+        resizeButton.addActionListener(e -> {
+            int newWidth = (Integer) widthSpinner.getValue();
+            int newHeight = (Integer) heightSpinner.getValue();
+            
+            if (currentMap != null) {
+                currentMap.resize(newWidth, newHeight);
+                updateMapView();
+            }
+        });
+        
+        // Map view mouse listeners
+        mapViewPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                handleMapClick(e.getX(), e.getY());
+            }
+        });
+        
+        mapViewPanel.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                handleMapClick(e.getX(), e.getY());
+            }
+        });
+        
+        // Terrain combo box listener
+        terrainComboBox.addActionListener(e -> {
+            int selectedIndex = terrainComboBox.getSelectedIndex();
+            if (selectedIndex >= 0 && selectedIndex < loadedTerrains.size()) {
+                currentTerrain = loadedTerrains.get(selectedIndex);
+                updateTerrainThumbnail(currentTerrain);
+            }
+        });
+        
+        // Entity combo box listener
+        entityNameComboBox.addActionListener(e -> {
+            updateCurrentEntity();
+        });
+    }
+    
+    /**
+     * Updates the current entity based on the selected entity type and name.
+     */
+    private void updateCurrentEntity() {
+        String selectedType = (String) entityTypeComboBox.getSelectedItem();
+        String selectedName = (String) entityNameComboBox.getSelectedItem();
+        
+        if (selectedType == null || selectedName == null) {
+            currentEntity = null;
+            return;
+        }
+        
+        // Find the selected entity
+        if ("Item".equals(selectedType)) {
+            for (Item item : loadedItems) {
+                if (item.getName().equals(selectedName)) {
+                    currentEntity = item;
+                    break;
+                }
+            }
+        } else if ("Creature".equals(selectedType)) {
+            for (Creature creature : loadedCreatures) {
+                if (creature.getName().equals(selectedName)) {
+                    currentEntity = creature;
+                    break;
+                }
+            }
+        } else if ("Trader".equals(selectedType)) {
+            for (Trader trader : loadedTraders) {
+                if (trader.getName().equals(selectedName)) {
+                    currentEntity = trader;
+                    break;
+                }
+            }
+        } else if ("Spawner".equals(selectedType)) {
+            for (Spawner spawner : loadedSpawners) {
+                if (spawner.getName().equals(selectedName)) {
+                    currentEntity = spawner;
+                    break;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Updates the entity name combo box based on the selected entity type.
+     */
+    private void updateEntityNameComboBox() {
+        entityNameComboBox.removeAllItems();
+        
+        String selectedType = (String) entityTypeComboBox.getSelectedItem();
+        
+        if ("Item".equals(selectedType)) {
+            for (Item item : loadedItems) {
+                entityNameComboBox.addItem(item.getName());
+            }
+        } else if ("Creature".equals(selectedType)) {
+            for (Creature creature : loadedCreatures) {
+                entityNameComboBox.addItem(creature.getName());
+            }
+        } else if ("Trader".equals(selectedType)) {
+            for (Trader trader : loadedTraders) {
+                entityNameComboBox.addItem(trader.getName());
+            }
+        } else if ("Spawner".equals(selectedType)) {
+            for (Spawner spawner : loadedSpawners) {
+                entityNameComboBox.addItem(spawner.getName());
+            }
+        }
+        
+        updateCurrentEntity();
+    }
+    
+    /**
+     * Handles a click on the map view.
+     * 
+     * @param x The x coordinate of the click
+     * @param y The y coordinate of the click
+     */
+    private void handleMapClick(int x, int y) {
+        if (currentMap == null) return;
+        
+        // Convert screen coordinates to cell coordinates
+        int cellSize = (int)(currentMap.getCellSize() * zoomLevel);
+        int cellX = x / cellSize;
+        int cellY = y / cellSize;
+        
+        // Check if the coordinates are valid
+        if (cellX >= 0 && cellX < currentMap.getWidth() && cellY >= 0 && cellY < currentMap.getHeight()) {
+            // Update selected cell
+            selectedCell = new Point(cellX, cellY);
+            
+            // Handle the action based on the current tool
+            switch (currentTool) {
+                case SELECT:
+                    // Just select the cell
+                    break;
+                case TERRAIN:
+                    // Apply the current terrain to the cell
+                    if (currentTerrain != null) {
+                        currentMap.setTerrain(cellX, cellY, currentTerrain);
+                    }
+                    break;
+                case ENTITY:
+                    // Add the current entity to the cell
+                    if (currentEntity != null) {
+                        currentMap.addEntity(cellX, cellY, currentEntity);
+                    }
+                    break;
+                case ERASE:
+                    // Clear the cell
+                    MapCell cell = currentMap.getCell(cellX, cellY);
+                    if (cell != null) {
+                        cell.clearEntities();
+                    }
+                    break;
+            }
+            
+            // Update the display
+            updateCellInfo();
+            mapViewPanel.repaint();
+        }
+    }
+    
+    /**
+     * Loads objects from the exports directory.
+     */
+    @Override
+    protected void loadObjects() {
+        loadedItems = loadItems();
+        loadedCreatures = loadCreatures();
+        loadedTraders = loadTraders();
+        loadedSpawners = loadSpawners();
+        loadedTerrains = loadTerrains();
+        
+        // Initialize UI components with loaded objects
+        updateEntityNameComboBox();
+        
+        terrainComboBox.removeAllItems();
+        for (Terrain terrain : loadedTerrains) {
+            terrainComboBox.addItem(terrain.getName());
+        }
+        
+        // Initialize with the first terrain if available
+        if (!loadedTerrains.isEmpty()) {
+            terrainComboBox.setSelectedIndex(0);
+            currentTerrain = loadedTerrains.get(0);
+            updateTerrainThumbnail(currentTerrain);
+        }
+    }
+    
+    /**
+     * Loads items from the exports directory.
+     * 
+     * @return The list of loaded items
+     */
+    private List<Item> loadItems() {
+        List<Item> items = new ArrayList<>();
+        File dir = new File("exports/item");
+        
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".txt"));
+            
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        Item item = FileUtils.loadItem(file.getPath());
+                        if (item != null) {
+                            items.add(item);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error loading item: " + file.getName());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        
+        return items;
+    }
+
+    /**
+     * Loads creatures from the exports directory.
+     * 
+     * @return The list of loaded creatures
+     */
+    private List<Creature> loadCreatures() {
+        List<Creature> creatures = new ArrayList<>();
+        File dir = new File("exports/creature");
+        
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".txt"));
+            
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        Creature creature = FileUtils.loadCreature(file.getPath());
+                        if (creature != null) {
+                            creatures.add(creature);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error loading creature: " + file.getName());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        
+        return creatures;
+    }
+    
+    /**
+     * Loads traders from the exports directory.
+     * 
+     * @return The list of loaded traders
+     */
+    private List<Trader> loadTraders() {
+        List<Trader> traders = new ArrayList<>();
+        File dir = new File("exports/trader");
+        
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".txt"));
+            
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        Trader trader = FileUtils.loadTrader(file.getPath());
+                        if (trader != null) {
+                            traders.add(trader);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error loading trader: " + file.getName());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        
+        return traders;
+    }
+    
+    /**
+     * Loads spawners from the exports directory.
+     * 
+     * @return The list of loaded spawners
+     */
+    private List<Spawner> loadSpawners() {
+        List<Spawner> spawners = new ArrayList<>();
+        File dir = new File("exports/spawner");
+        
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".txt"));
+            
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        Spawner spawner = FileUtils.loadSpawner(file.getPath());
+                        if (spawner != null) {
+                            spawners.add(spawner);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error loading spawner: " + file.getName());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        
+        return spawners;
+    }
+    
+    /**
+     * Loads terrains from the exports directory.
+     * 
+     * @return The list of loaded terrains
+     */
+    private List<Terrain> loadTerrains() {
+        List<Terrain> terrains = new ArrayList<>();
+        File dir = new File("exports/terrain");
+        
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".txt"));
+            
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        Terrain terrain = FileUtils.loadTerrain(file.getPath());
+                        if (terrain != null) {
+                            terrains.add(terrain);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error loading terrain: " + file.getName());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        
+        return terrains;
+    }
+    
+    /**
+     * Implementation of abstract methods from BaseEditorPanel
+     */
+    @Override
+    protected void createObject() {
+        // Create a new map
+        createNewMap("New Map", 10, 10);
+    }
+
+    @Override
+    protected void editObject(GameMap map) {
+        if (map != null) {
+            currentMap = map;
+            
+            // Update UI components
+            nameField.setText(currentMap.getName());
+            descriptionArea.setText(currentMap.getDescription());
+            widthSpinner.setValue(currentMap.getWidth());
+            heightSpinner.setValue(currentMap.getHeight());
+            
+            updateMapView();
+        }
+    }
+
+    @Override
+    protected void saveObject() {
+        if (currentMap != null) {
+            // Update the map with values from UI components
+            currentMap.setName(nameField.getText());
+            currentMap.setDescription(descriptionArea.getText());
+            
+            // Add the map to the list model if it's not already there
+            boolean found = false;
+            for (int i = 0; i < objectList.getSize(); i++) {
+                if (objectList.getElementAt(i).equals(currentMap.getName())) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                objectList.addElement(currentMap.getName());
+            }
+            
+            // Store the map in the objects map
+            objects.put(currentMap.getName(), currentMap);
+        }
+    }
+
+    @Override
+    protected void exportObject() {
+        if (currentMap != null) {
+            // Save the map to a file
+            String filePath = "exports/map/" + currentMap.getName().replaceAll("\\s+", "_") + ".txt";
+            boolean success = FileUtils.saveMap(currentMap, filePath);
+            
+            if (success) {
+                JOptionPane.showMessageDialog(this, 
+                    "Map exported successfully to: " + filePath, 
+                    "Export Successful", 
+                    JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Failed to export map to: " + filePath, 
+                    "Export Failed", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    @Override
+    protected void importObject() {
+        // Load a map from a file
+        JFileChooser fileChooser = new JFileChooser("exports/map");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            @Override
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt");
+            }
+            
+            @Override
+            public String getDescription() {
+                return "Map Files (*.txt)";
+            }
+        });
+        
+        int result = fileChooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            GameMap map = FileUtils.loadMap(selectedFile.getPath());
+            
+            if (map != null) {
+                // Add the map to the list and objects map
+                currentMap = map;
+                
+                // Update UI components
+                nameField.setText(currentMap.getName());
+                descriptionArea.setText(currentMap.getDescription());
+                widthSpinner.setValue(currentMap.getWidth());
+                heightSpinner.setValue(currentMap.getHeight());
+                
+                updateMapView();
+                
+                // Add to list if not already there
+                boolean found = false;
+                for (int i = 0; i < objectList.getSize(); i++) {
+                    if (objectList.getElementAt(i).equals(currentMap.getName())) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    objectList.addElement(currentMap.getName());
+                }
+                
+                objects.put(currentMap.getName(), currentMap);
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Failed to import map from: " + selectedFile.getPath(), 
+                    "Import Failed", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    @Override
+    protected void deleteObject() {
+        int selectedIndex = objectListComponent.getSelectedIndex();
+        if (selectedIndex >= 0) {
+            String name = objectList.getElementAt(selectedIndex);
+            
+            int confirm = JOptionPane.showConfirmDialog(this, 
+                "Are you sure you want to delete the map '" + name + "'?", 
+                "Confirm Delete", 
+                JOptionPane.YES_NO_OPTION);
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                objects.remove(name);
+                objectList.remove(selectedIndex);
+                
+                // Create a new map if the current one was deleted
+                if (currentMap != null && currentMap.getName().equals(name)) {
+                    createNewMap("New Map", 10, 10);
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void handleListSelectionChanged(ListSelectionEvent e) {
+        if (!e.getValueIsAdjusting()) {
+            int selectedIndex = objectListComponent.getSelectedIndex();
+            if (selectedIndex >= 0) {
+                String name = objectList.getElementAt(selectedIndex);
+                GameMap map = (GameMap) objects.get(name);
+                
+                if (map != null) {
+                    currentMap = map;
+                    
+                    // Update UI components
+                    nameField.setText(currentMap.getName());
+                    descriptionArea.setText(currentMap.getDescription());
+                    widthSpinner.setValue(currentMap.getWidth());
+                    heightSpinner.setValue(currentMap.getHeight());
+                    
+                    updateMapView();
+                }
+            }
+        }
+    }
+}

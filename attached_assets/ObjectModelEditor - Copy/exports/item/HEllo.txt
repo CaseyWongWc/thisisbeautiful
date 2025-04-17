@@ -1,0 +1,6 @@
+#Item: HEllo
+#Sun Apr 06 11:41:51 GMT 2025
+description=asdf
+imagePath=/home/runner/workspace/resources/water.png
+name=HEllo
+type=Item

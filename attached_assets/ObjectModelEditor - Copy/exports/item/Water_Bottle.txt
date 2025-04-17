@@ -1,0 +1,8 @@
+#Item: Water Bottle
+#Fri Apr 05 07:34:51 UTC 2025
+goldValue=10
+waterValue=30
+name=Water Bottle
+foodValue=0
+description=A bottle of refreshing water
+imagePath=resources/water.png

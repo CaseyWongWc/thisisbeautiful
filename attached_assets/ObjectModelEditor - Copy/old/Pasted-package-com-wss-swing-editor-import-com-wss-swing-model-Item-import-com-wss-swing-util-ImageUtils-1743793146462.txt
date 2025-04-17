@@ -1,0 +1,900 @@
+package com.wss.swing.editor;
+
+import com.wss.swing.model.Item;
+import com.wss.swing.util.ImageUtils;
+import com.wss.swing.util.ItemImportExportUtil;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Panel for editing items in the game world.
+ */
+public class ItemEditor extends JPanel {
+    
+    private List<Item> items;
+    private Item selectedItem;
+    
+    // UI Components
+    private JTable itemTable;
+    private DefaultTableModel tableModel;
+    private JTextField nameField;
+    private JCheckBox repeatableCheckbox;
+    private JSpinner goldValueSpinner;  // Renamed from valueSpinner to be more explicit
+    private JSpinner foodValueSpinner;
+    private JSpinner waterValueSpinner;
+    private JTextArea descriptionArea;
+    private JLabel iconLabel;
+    private JButton colorButton;
+    private JButton importButton;
+    private JButton exportButton;
+    private JButton exportAllButton;
+    private JButton addButton;
+    private JButton updateButton;
+    private JButton deleteButton;
+    private JButton clearButton;
+    private JButton restoreDefaultsButton;
+    
+    // Difficulty level checkboxes
+    private JCheckBox[] difficultyCheckboxes;
+    
+    /**
+     * Creates a new item editor panel.
+     */
+    public ItemEditor() {
+        items = new ArrayList<>();
+        setLayout(new BorderLayout(10, 10));
+        setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        // Create the split pane for table and form
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        splitPane.setResizeWeight(0.4); // 40% left, 60% right
+        
+        // Create table panel
+        JPanel tablePanel = createTablePanel();
+        
+        // Create form panel
+        JPanel formPanel = createFormPanel();
+        
+        // Add panels to split pane
+        splitPane.setLeftComponent(tablePanel);
+        splitPane.setRightComponent(formPanel);
+        
+        // Add split pane to the main panel
+        add(splitPane, BorderLayout.CENTER);
+        
+        // Initialize with default values
+        clearForm();
+        
+        // Add some sample items
+        createDefaultItems();
+    }
+    
+    /**
+     * Creates the item table panel.
+     * 
+     * @return The item table panel.
+     */
+    private JPanel createTablePanel() {
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        panel.setBorder(BorderFactory.createTitledBorder("Available Items"));
+        
+        // Create the table model
+        String[] columnNames = {"Name", "Gold Value", "Food Value", "Water Value"};
+        tableModel = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Make all cells non-editable
+            }
+        };
+        
+        // Create the table
+        itemTable = new JTable(tableModel);
+        itemTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        itemTable.setRowHeight(25);
+        
+        // Set column widths
+        itemTable.getColumnModel().getColumn(0).setPreferredWidth(150); // Name
+        itemTable.getColumnModel().getColumn(1).setPreferredWidth(100); // Gold Value
+        itemTable.getColumnModel().getColumn(2).setPreferredWidth(80);  // Food Value
+        itemTable.getColumnModel().getColumn(3).setPreferredWidth(80);  // Water Value
+        
+        // Add selection listener
+        itemTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int selectedRow = itemTable.getSelectedRow();
+                if (selectedRow >= 0 && selectedRow < items.size()) {
+                    selectItem(items.get(selectedRow));
+                }
+            }
+        });
+        
+        // Create scroll pane
+        JScrollPane scrollPane = new JScrollPane(itemTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Add import/export buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        importButton = new JButton("Import");
+        exportButton = new JButton("Export");
+        exportAllButton = new JButton("Export All");
+        
+        importButton.addActionListener(e -> importItem());
+        exportButton.addActionListener(e -> exportItem());
+        exportAllButton.addActionListener(e -> exportAllItems());
+        
+        buttonPanel.add(importButton);
+        buttonPanel.add(exportButton);
+        buttonPanel.add(exportAllButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the item form panel.
+     * 
+     * @return The item form panel.
+     */
+    private JPanel createFormPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Item Properties"));
+        
+        // Main form panel with GridBagLayout for better control
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Name field
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        formPanel.add(new JLabel("Name:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        nameField = new JTextField(20);
+        formPanel.add(nameField, gbc);
+        
+        // Repeatable checkbox
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        formPanel.add(new JLabel("Repeatable:"), gbc);
+        
+        gbc.gridx = 1;
+        repeatableCheckbox = new JCheckBox();
+        formPanel.add(repeatableCheckbox, gbc);
+        
+        // Gold value
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        formPanel.add(new JLabel("Gold Value:"), gbc);
+        
+        gbc.gridx = 1;
+        goldValueSpinner = new JSpinner(new SpinnerNumberModel(1, 0, 1000, 1));
+        formPanel.add(goldValueSpinner, gbc);
+        
+        // Food value
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        formPanel.add(new JLabel("Food Value:"), gbc);
+        
+        gbc.gridx = 1;
+        foodValueSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        formPanel.add(foodValueSpinner, gbc);
+        
+        // Water value
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        formPanel.add(new JLabel("Water Value:"), gbc);
+        
+        gbc.gridx = 1;
+        waterValueSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        formPanel.add(waterValueSpinner, gbc);
+        
+        // Difficulty levels
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        JPanel difficultyPanel = new JPanel(new GridLayout(0, 3, 5, 5));
+        difficultyPanel.setBorder(BorderFactory.createTitledBorder("Available Difficulties"));
+        
+        // Create difficulty checkboxes
+        difficultyCheckboxes = new JCheckBox[Item.DIFFICULTY_LEVELS.length];
+        for (int i = 0; i < Item.DIFFICULTY_LEVELS.length; i++) {
+            difficultyCheckboxes[i] = new JCheckBox(Item.DIFFICULTY_LEVELS[i]);
+            difficultyCheckboxes[i].setSelected(true); // By default, available on all difficulties
+            difficultyPanel.add(difficultyCheckboxes[i]);
+        }
+        
+        formPanel.add(difficultyPanel, gbc);
+        
+        // Description
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        formPanel.add(new JLabel("Description:"), gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 7;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        descriptionArea = new JTextArea(5, 20);
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setWrapStyleWord(true);
+        JScrollPane descriptionScrollPane = new JScrollPane(descriptionArea);
+        formPanel.add(descriptionScrollPane, gbc);
+        
+        // Icon section
+        gbc.gridx = 0;
+        gbc.gridy = 8;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0;
+        JPanel iconPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        iconPanel.add(new JLabel("Icon:"));
+        
+        iconLabel = new JLabel();
+        iconLabel.setPreferredSize(new Dimension(64, 64));
+        iconLabel.setBorder(BorderFactory.createEtchedBorder());
+        iconPanel.add(iconLabel);
+        
+        colorButton = new JButton("Set Color");
+        colorButton.addActionListener(e -> setItemColor());
+        iconPanel.add(colorButton);
+        
+        formPanel.add(iconPanel, gbc);
+        
+        // Form buttons
+        gbc.gridx = 0;
+        gbc.gridy = 9;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.CENTER;
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        
+        addButton = new JButton("Add");
+        updateButton = new JButton("Update");
+        deleteButton = new JButton("Delete");
+        clearButton = new JButton("Clear");
+        restoreDefaultsButton = new JButton("Restore Defaults");
+        
+        addButton.addActionListener(e -> addItem());
+        updateButton.addActionListener(e -> updateItem());
+        deleteButton.addActionListener(e -> deleteItem());
+        clearButton.addActionListener(e -> clearForm());
+        restoreDefaultsButton.addActionListener(e -> restoreDefaults());
+        
+        buttonPanel.add(addButton);
+        buttonPanel.add(updateButton);
+        buttonPanel.add(deleteButton);
+        buttonPanel.add(clearButton);
+        buttonPanel.add(restoreDefaultsButton);
+        
+        formPanel.add(buttonPanel, gbc);
+        
+        // Add form to panel with scroll pane
+        JScrollPane formScrollPane = new JScrollPane(formPanel);
+        panel.add(formScrollPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates default items.
+     */
+    private void createDefaultItems() {
+        // Create apple item
+        Item apple = new Item(
+            "Apple", (String)null, "Food", 2, true,
+            "A fresh, juicy apple. Restores some food.", 5, 0, true
+        );
+        apple.setIcon(ImageUtils.createColoredIcon(Color.RED, 64, 64));
+        items.add(apple);
+        
+        // Create water bottle item
+        Item waterBottle = new Item(
+            "Water Bottle", (String)null, "Water", 3, true,
+            "A bottle of clean water. Restores water levels.", 0, 10, true
+        );
+        waterBottle.setIcon(ImageUtils.createColoredIcon(new Color(0, 191, 255), 64, 64));
+        items.add(waterBottle);
+        
+        // Create gold nugget item
+        Item goldNugget = new Item(
+            "Gold Nugget", (String)null, "Treasure", 50, true,
+            "A small gold nugget. Worth a decent amount.", 0, 0, true
+        );
+        goldNugget.setIcon(ImageUtils.createColoredIcon(new Color(255, 215, 0), 64, 64));
+        items.add(goldNugget);
+        
+        // Create hunting knife item
+        Item knife = new Item(
+            "Hunting Knife", (String)null, "Tool", 15, false,
+            "A sharp hunting knife. Useful for various tasks.", 0, 0, true
+        );
+        knife.setIcon(ImageUtils.createColoredIcon(Color.GRAY, 64, 64));
+        items.add(knife);
+        
+        // Create map item
+        Item map = new Item(
+            "Map", (String)null, "Special", 20, false,
+            "A map of the surrounding area. Reveals parts of the world.", 0, 0, true
+        );
+        map.setIcon(ImageUtils.createColoredIcon(new Color(210, 180, 140), 64, 64));
+        items.add(map);
+        
+        // Update the table
+        refreshItemTable();
+    }
+    
+    /**
+     * Refreshes the item table with the current list of items.
+     */
+    private void refreshItemTable() {
+        // Clear the table
+        tableModel.setRowCount(0);
+        
+        // Add items to the table
+        for (Item item : items) {
+            Object[] row = new Object[]{
+                item.getName(),
+                item.getValue(),       // Gold value
+                item.getFoodValue(),
+                item.getWaterValue()
+            };
+            tableModel.addRow(row);
+        }
+    }
+    
+    /**
+     * Selects an item and populates the form.
+     * 
+     * @param item The item to select.
+     */
+    private void selectItem(Item item) {
+        selectedItem = item;
+        
+        // Populate form fields
+        nameField.setText(item.getName());
+        repeatableCheckbox.setSelected(item.isRepeatable());
+        goldValueSpinner.setValue(item.getValue());
+        foodValueSpinner.setValue(item.getFoodValue());
+        waterValueSpinner.setValue(item.getWaterValue());
+        descriptionArea.setText(item.getDescription());
+        
+        // Set icon
+        if (item.getIcon() != null) {
+            iconLabel.setIcon(item.getIcon());
+        } else {
+            iconLabel.setIcon(null);
+        }
+        
+        // Set difficulty checkboxes
+        Set<String> availableDifficulties = item.getAvailableDifficulties();
+        for (int i = 0; i < Item.DIFFICULTY_LEVELS.length; i++) {
+            String difficulty = Item.DIFFICULTY_LEVELS[i];
+            difficultyCheckboxes[i].setSelected(availableDifficulties.contains(difficulty));
+        }
+        
+        // Update button states
+        updateButton.setEnabled(true);
+        deleteButton.setEnabled(!item.isBuiltIn());
+        exportButton.setEnabled(true);
+    }
+    
+    /**
+     * Clears the form and deselects the selected item.
+     */
+    private void clearForm() {
+        selectedItem = null;
+        
+        // Clear form fields
+        nameField.setText("");
+        repeatableCheckbox.setSelected(true);
+        goldValueSpinner.setValue(1);
+        foodValueSpinner.setValue(0);
+        waterValueSpinner.setValue(0);
+        descriptionArea.setText("");
+        iconLabel.setIcon(null);
+        
+        // Reset difficulty checkboxes to all selected
+        if (difficultyCheckboxes != null) {
+            for (JCheckBox checkbox : difficultyCheckboxes) {
+                checkbox.setSelected(true);
+            }
+        }
+        
+        // Update button states
+        updateButton.setEnabled(false);
+        deleteButton.setEnabled(false);
+        exportButton.setEnabled(false);
+        
+        // Deselect table row
+        itemTable.clearSelection();
+    }
+    
+    /**
+     * Adds a new item based on the form values.
+     */
+    private void addItem() {
+        // Validate input
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter a name for the item.", 
+                "Invalid Name", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Get values from form
+        int goldValue = (Integer) goldValueSpinner.getValue();
+        boolean repeatable = repeatableCheckbox.isSelected();
+        int foodValue = (Integer) foodValueSpinner.getValue();
+        int waterValue = (Integer) waterValueSpinner.getValue();
+        String description = descriptionArea.getText();
+        
+        // Create item with default icon if none set
+        ImageIcon icon = (ImageIcon) iconLabel.getIcon();
+        if (icon == null) {
+            // Choose color based on values
+            Color iconColor;
+            if (foodValue > 0) {
+                iconColor = Color.RED;  // Food items are red
+            } else if (waterValue > 0) {
+                iconColor = new Color(0, 191, 255);  // Water items are blue
+            } else {
+                iconColor = new Color(255, 215, 0);  // Gold/treasure items are gold
+            }
+            icon = ImageUtils.createColoredIcon(iconColor, 64, 64);
+        }
+        
+        // We're not using type anymore, so set it based on the highest value
+        String type = "General";
+        if (foodValue > 0 && foodValue >= waterValue) {
+            type = "Food";
+        } else if (waterValue > 0) {
+            type = "Water";
+        } else if (goldValue > 10) {
+            type = "Treasure";
+        }
+        
+        // Create new item
+        Item item = new Item(
+            name, icon, type, goldValue, repeatable, description, foodValue, waterValue, false
+        );
+        
+        // Set difficulty availability based on checkbox selections
+        Set<String> availableDifficulties = new HashSet<>();
+        for (int i = 0; i < difficultyCheckboxes.length; i++) {
+            if (difficultyCheckboxes[i].isSelected()) {
+                availableDifficulties.add(Item.DIFFICULTY_LEVELS[i]);
+            }
+        }
+        item.setAvailableDifficulties(availableDifficulties);
+        
+        // Add to list and refresh
+        items.add(item);
+        refreshItemTable();
+        
+        // Select the new item
+        itemTable.setRowSelectionInterval(items.size() - 1, items.size() - 1);
+        
+        // Show confirmation
+        JOptionPane.showMessageDialog(this, 
+            "Item '" + name + "' has been added.", 
+            "Item Added", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Updates the selected item with values from the form.
+     */
+    private void updateItem() {
+        if (selectedItem == null) {
+            return;
+        }
+        
+        // Validate input
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter a name for the item.", 
+                "Invalid Name", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Get values from form
+        int goldValue = (Integer) goldValueSpinner.getValue();
+        boolean repeatable = repeatableCheckbox.isSelected();
+        int foodValue = (Integer) foodValueSpinner.getValue();
+        int waterValue = (Integer) waterValueSpinner.getValue();
+        String description = descriptionArea.getText();
+        
+        // Determine type based on the highest value
+        String type = "General";
+        if (foodValue > 0 && foodValue >= waterValue) {
+            type = "Food";
+        } else if (waterValue > 0) {
+            type = "Water";
+        } else if (goldValue > 10) {
+            type = "Treasure";
+        }
+        
+        // Update item properties
+        selectedItem.setName(name);
+        selectedItem.setType(type);
+        selectedItem.setValue(goldValue);
+        selectedItem.setRepeatable(repeatable);
+        selectedItem.setFoodValue(foodValue);
+        selectedItem.setWaterValue(waterValue);
+        selectedItem.setDescription(description);
+        
+        // Update icon if changed
+        ImageIcon icon = (ImageIcon) iconLabel.getIcon();
+        if (icon != null) {
+            selectedItem.setIcon(icon);
+        }
+        
+        // Update difficulty availability based on checkbox selections
+        Set<String> availableDifficulties = new HashSet<>();
+        for (int i = 0; i < difficultyCheckboxes.length; i++) {
+            if (difficultyCheckboxes[i].isSelected()) {
+                availableDifficulties.add(Item.DIFFICULTY_LEVELS[i]);
+            }
+        }
+        selectedItem.setAvailableDifficulties(availableDifficulties);
+        
+        // Refresh the table
+        refreshItemTable();
+        
+        // Show confirmation
+        JOptionPane.showMessageDialog(this, 
+            "Item '" + name + "' has been updated.", 
+            "Item Updated", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Deletes the selected item.
+     */
+    private void deleteItem() {
+        if (selectedItem == null || selectedItem.isBuiltIn()) {
+            return;
+        }
+        
+        // Confirm deletion
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to delete the item '" + selectedItem.getName() + "'?",
+            "Confirm Deletion", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            items.remove(selectedItem);
+            refreshItemTable();
+            clearForm();
+        }
+    }
+    
+    /**
+     * Sets the item color using a color chooser.
+     */
+    private void setItemColor() {
+        Color initialColor = Color.ORANGE;
+        if (iconLabel.getIcon() != null && iconLabel.getIcon() instanceof ImageIcon) {
+            // Try to get the current color from the icon
+            initialColor = ImageUtils.getAverageColor((ImageIcon) iconLabel.getIcon());
+        } else {
+            // Choose color based on food/water/gold values
+            int foodValue = (Integer) foodValueSpinner.getValue();
+            int waterValue = (Integer) waterValueSpinner.getValue();
+            int goldValue = (Integer) goldValueSpinner.getValue();
+            
+            if (foodValue > 0 && foodValue >= waterValue) {
+                initialColor = Color.RED;  // Food items are red
+            } else if (waterValue > 0) {
+                initialColor = new Color(0, 191, 255);  // Water items are blue
+            } else if (goldValue > 10) {
+                initialColor = new Color(255, 215, 0);  // Gold/treasure items are gold
+            }
+        }
+        
+        // Show color chooser
+        Color color = JColorChooser.showDialog(this, "Choose Item Color", initialColor);
+        
+        if (color != null) {
+            // Create colored icon
+            ImageIcon icon = ImageUtils.createColoredIcon(color, 64, 64);
+            iconLabel.setIcon(icon);
+        }
+    }
+    
+    /**
+     * Returns a color appropriate for the given item type.
+     * 
+     * @param type The item type.
+     * @return A color for the item type.
+     */
+    private Color getColorForItemType(String type) {
+        switch (type) {
+            case "Food":
+                return Color.RED;
+            case "Water":
+                return new Color(0, 191, 255); // Deep Sky Blue
+            case "Resource":
+                return new Color(139, 69, 19); // Saddle Brown
+            case "Tool":
+                return Color.GRAY;
+            case "Weapon":
+                return Color.DARK_GRAY;
+            case "Treasure":
+                return new Color(255, 215, 0); // Gold
+            case "Special":
+                return new Color(148, 0, 211); // Dark Violet
+            default:
+                return Color.ORANGE;
+        }
+    }
+    
+    /**
+     * Imports an item from a file.
+     */
+    private void importItem() {
+        // Create a file chooser
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Import Item");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt");
+            }
+            public String getDescription() {
+                return "Text Files (*.txt)";
+            }
+        });
+        
+        // Show open dialog
+        int result = fileChooser.showOpenDialog(this);
+        
+        // If file selected
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            
+            // Import item(s) from file
+            List<Item> importedItems = ItemImportExportUtil.importItems(selectedFile.getAbsolutePath());
+            
+            if (importedItems.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                    "No valid item data found in the file.",
+                    "Import Failed", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Ask what to do with imported items
+            int option = JOptionPane.showConfirmDialog(this,
+                "Found " + importedItems.size() + " item(s). Add to existing items?",
+                "Import Items", JOptionPane.YES_NO_CANCEL_OPTION);
+                
+            if (option == JOptionPane.CANCEL_OPTION) {
+                return;
+            } else if (option == JOptionPane.NO_OPTION) {
+                // Replace existing items (except built-in)
+                List<Item> builtInItems = new ArrayList<>();
+                for (Item item : items) {
+                    if (item.isBuiltIn()) {
+                        builtInItems.add(item);
+                    }
+                }
+                
+                items.clear();
+                items.addAll(builtInItems);
+            }
+            
+            // Add imported items
+            for (Item item : importedItems) {
+                // Check for duplicates
+                boolean isDuplicate = false;
+                for (Item existingItem : items) {
+                    if (existingItem.getName().equals(item.getName())) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                
+                if (!isDuplicate) {
+                    items.add(item);
+                }
+            }
+            
+            // Refresh the table
+            refreshItemTable();
+            
+            // Show success message
+            JOptionPane.showMessageDialog(this,
+                "Successfully imported " + importedItems.size() + " item(s).",
+                "Import Successful", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+    
+    /**
+     * Exports the selected item to a file.
+     */
+    private void exportItem() {
+        if (selectedItem == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please select an item to export.",
+                "No Item Selected", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Create a file chooser
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export Item");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt");
+            }
+            public String getDescription() {
+                return "Text Files (*.txt)";
+            }
+        });
+        
+        // Default file name suggestion
+        fileChooser.setSelectedFile(new File(selectedItem.getName() + ".txt"));
+        
+        // Show save dialog
+        int result = fileChooser.showSaveDialog(this);
+        
+        // If file selected
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            
+            // Ensure file has .txt extension
+            String filePath = selectedFile.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith(".txt")) {
+                filePath += ".txt";
+                selectedFile = new File(filePath);
+            }
+            
+            // Confirm overwrite if file exists
+            if (selectedFile.exists()) {
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "File already exists. Overwrite?",
+                    "Confirm Overwrite", JOptionPane.YES_NO_OPTION);
+                    
+                if (confirm != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
+            
+            // Export item to file
+            boolean success = ItemImportExportUtil.exportItem(selectedItem, selectedFile.getAbsolutePath());
+            
+            // Show result message
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                    "Item '" + selectedItem.getName() + "' was exported successfully.",
+                    "Export Successful", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                    "Failed to export item. Check console for details.",
+                    "Export Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    /**
+     * Exports all items to a file.
+     */
+    private void exportAllItems() {
+        if (items.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "No items to export.",
+                "Export Failed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Create a file chooser
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export All Items");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt");
+            }
+            public String getDescription() {
+                return "Text Files (*.txt)";
+            }
+        });
+        
+        // Default file name suggestion
+        fileChooser.setSelectedFile(new File("all_items.txt"));
+        
+        // Show save dialog
+        int result = fileChooser.showSaveDialog(this);
+        
+        // If file selected
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            
+            // Ensure file has .txt extension
+            String filePath = selectedFile.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith(".txt")) {
+                filePath += ".txt";
+                selectedFile = new File(filePath);
+            }
+            
+            // Confirm overwrite if file exists
+            if (selectedFile.exists()) {
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "File already exists. Overwrite?",
+                    "Confirm Overwrite", JOptionPane.YES_NO_OPTION);
+                    
+                if (confirm != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
+            
+            // Export all items
+            boolean success = ItemImportExportUtil.exportItems(items, selectedFile.getAbsolutePath());
+            
+            // Show result message
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                    "All items were exported successfully.",
+                    "Export Successful", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                    "Failed to export items. Check console for details.",
+                    "Export Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    /**
+     * Gets the list of items being edited.
+     * 
+     * @return The list of items.
+     */
+    public List<Item> getItems() {
+        return items;
+    }
+    
+    /**
+     * Restores the default items. Clears all custom items and recreates the default ones.
+     */
+    private void restoreDefaults() {
+        // Confirm restoration
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to restore default items? All custom items will be lost.",
+            "Confirm Restore Defaults", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            // Clear existing items
+            items.clear();
+            
+            // Recreate default items
+            createDefaultItems();
+            
+            // Clear the form
+            clearForm();
+            
+            // Show confirmation
+            JOptionPane.showMessageDialog(this, 
+                "Default items have been restored.", 
+                "Defaults Restored", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+}

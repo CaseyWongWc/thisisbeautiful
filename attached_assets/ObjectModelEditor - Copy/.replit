@@ -1,0 +1,85 @@
+modules = ["java-21", "openjdk-11"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Run Object Editor"
+
+[[workflows.workflow]]
+name = "Run"
+author = 27304601
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "javac -d bin -sourcepath src src/objectEditor/Main.java && java -cp bin objectEditor.Main"
+
+[[workflows.workflow]]
+name = "Build and Run"
+author = 27304601
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "mvn clean compile"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "mvn exec:java"
+
+[[workflows.workflow]]
+name = "Build and Run with VNC"
+author = 27304601
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export DISPLAY=:0"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "Xvfb :0 -screen 0 1280x1024x24 &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "mvn clean compile"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "mvn exec:java"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "run-object-editor"
+
+[[workflows.workflow]]
+name = "run-object-editor"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "javac -d bin -sourcepath src src/objectEditor/Main.java && java -cp bin objectEditor.Main"
+
+[[workflows.workflow]]
+name = "Run Object Editor"
+author = 27304601
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "java -cp bin objectEditor.Main 2>&1 | tee workflow_log.txt"
+
+[deployment]
+run = ["sh", "-c", "javac -d bin -sourcepath src src/objectEditor/Main.java && java -cp bin objectEditor.Main"]

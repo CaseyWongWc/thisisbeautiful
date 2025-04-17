@@ -1,0 +1,2027 @@
+package com.wss.swing.editor;
+
+import com.wss.swing.model.Creature;
+import com.wss.swing.model.MovementPattern;
+import com.wss.swing.model.Trader;
+import com.wss.swing.model.TradeOffer;
+import com.wss.swing.model.Item;
+import com.wss.swing.util.ImageUtils;
+import com.wss.swing.util.CreatureImportExportUtil;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * A unified editor for NPCs (Creatures and Traders) with movement pattern editing capabilities.
+ * This editor combines the functionality of CreatureEditor, TraderEditor, and MovementPatternEditor
+ * into a single tabbed interface with custom layouts for each tab.
+ */
+public class NPCEditor extends JPanel {
+    
+    private List<Creature> creatures;
+    private List<Trader> traders;
+    private Trader selectedTrader;
+    private List<MovementPattern> movementPatterns;
+    private List<Item> availableItems;
+    
+    // UI Components
+    private JTabbedPane tabbedPane;
+    private JPanel creaturePanel;
+    private JPanel traderPanel;
+    private JPanel movementPatternPanel;
+    
+    // For mockup implementation with visual panels
+    private JList<String> creatureList;
+    private DefaultListModel<String> creatureListModel;
+    private JComboBox<String> iconComboBox;
+    private JTextField nameField; // For editing creature name
+    // No longer using isDeadlyCheckbox as hostility is determined by penalties
+    private JComboBox<String> dropsComboBox;
+    
+    // Penalty-related controls
+    private JCheckBox strengthPenaltyCheckBox;
+    private JSpinner strengthPenaltySpinner;
+    private JCheckBox waterPenaltyCheckBox;
+    private JSpinner waterPenaltySpinner;
+    private JCheckBox goldPenaltyCheckBox;
+    private JSpinner goldPenaltySpinner;
+    
+    // Color-related controls
+    private JButton colorButton;
+    private Color creatureColor = new Color(200, 150, 100); // Default color
+    
+    // Icon display components
+    private JPanel iconPanel;
+    private JLabel iconLabel;
+    
+    // Difficulty level checkboxes
+    private JCheckBox[] difficultyCheckBoxes = new JCheckBox[6];
+    
+    /**
+     * Creates a new NPC editor with tabs for creatures, traders, and movement patterns.
+     */
+    public NPCEditor() {
+        // Initialize data
+        creatures = new ArrayList<>();
+        traders = new ArrayList<>();
+        movementPatterns = new ArrayList<>();
+        availableItems = new ArrayList<>();
+        createSampleItems(); // Initialize with sample items
+        
+        // Load predefined creatures from the all_creatures.txt file
+        try {
+            creatures = CreatureImportExportUtil.loadPredefinedCreatures("all_creatures.txt", availableItems);
+            System.out.println("Loaded " + creatures.size() + " predefined creatures");
+        } catch (Exception e) {
+            System.err.println("Error loading predefined creatures: " + e.getMessage());
+            e.printStackTrace();
+            // Create some default creatures if loading fails
+            createDefaultCreatures();
+        }
+        
+        // Set up main layout
+        setLayout(new BorderLayout(10, 10));
+        setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        // Create the tabbed pane
+        tabbedPane = new JTabbedPane();
+        
+        // Create the panels for each tab
+        creaturePanel = createCreaturePanel();
+        traderPanel = createTraderPanel();
+        movementPatternPanel = createMovementPatternPanel();
+        
+        // Add tabs with custom titles
+        tabbedPane.addTab("Creatures", creaturePanel);
+        tabbedPane.addTab("Traders", traderPanel);
+        tabbedPane.addTab("Movement", movementPatternPanel);
+        
+        // Add tabbed pane to panel
+        add(tabbedPane, BorderLayout.CENTER);
+    }
+    
+    /**
+     * Creates default creatures in case loading from file fails.
+     */
+    private void createDefaultCreatures() {
+        // Create a few default creatures
+        Creature wolf = new Creature("Wild Wolf", (ImageIcon)null, "A wild wolf that hunts in the forest");
+        wolf.setStrengthPenalty(15);
+        wolf.setColor(new Color(100, 100, 100)); // Gray
+        creatures.add(wolf);
+        
+        Creature deer = new Creature("Deer", (ImageIcon)null, "A peaceful forest animal");
+        deer.setColor(new Color(133, 95, 61)); // Brown
+        creatures.add(deer);
+        
+        Creature raider = new Creature("Armed Raider", (ImageIcon)null, "A hostile human bandit armed with weapons");
+        raider.setStrengthPenalty(20);
+        raider.setWaterPenalty(10);
+        raider.setGoldPenalty(25);
+        raider.setColor(new Color(50, 0, 0)); // Dark red
+        creatures.add(raider);
+    }
+    
+    /**
+     * Creates the creature panel based on the mockup design.
+     * 
+     * @return The configured creature panel.
+     */
+    private JPanel createCreaturePanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        
+        // Top button panel for import/export/default
+        JPanel topButtonPanel = new JPanel(new BorderLayout());
+        
+        // Create a panel for the buttons
+        JPanel buttonGroupPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        
+        // Create a label to show the current file
+        JLabel currentFileLabel = new JLabel("Current file: all_creatures.txt");
+        currentFileLabel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 0));
+        Font italicFont = currentFileLabel.getFont().deriveFont(Font.ITALIC);
+        currentFileLabel.setFont(italicFont);
+        
+        JButton importButton = new JButton("Import As...");
+        JButton exportButton = new JButton("Export As...");
+        JButton defaultButton = new JButton("Default");
+        
+        // Add action listener to default button
+        defaultButton.addActionListener(e -> {
+            // Ask for confirmation before restoring defaults
+            int choice = JOptionPane.showConfirmDialog(
+                this,
+                "This will restore the default creatures. Any unsaved changes will be lost.\nContinue?",
+                "Restore Defaults",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                // Clear the existing creatures and add the defaults
+                creatures.clear();
+                createDefaultCreatures();
+                
+                // Refresh the list
+                refreshCreatureList();
+                
+                // Update the current file label to show we're using defaults
+                currentFileLabel.setText("Current file: all_creatures.txt (default)");
+                
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Default creatures restored.",
+                    "Restore Successful",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+            }
+        });
+        
+        // Add action listener to export button
+        exportButton.addActionListener(e -> {
+            // Present two options for export
+            String[] options = {"Export All", "Export Selected"};
+            int choice = JOptionPane.showOptionDialog(
+                this,
+                "Do you want to export all creatures or just the selected creature?",
+                "Export Options",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]
+            );
+            
+            if (choice == 0) { // Export All
+                // Let the user choose where to save the exported creatures
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Save Creatures File");
+                if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+                    // Add .txt extension if not present
+                    if (!filePath.toLowerCase().endsWith(".txt")) {
+                        filePath += ".txt";
+                    }
+                    
+                    // Export all creatures to the chosen file
+                    try {
+                        CreatureImportExportUtil.saveCreaturesToFile(filePath, creatures, availableItems);
+                        
+                        // Update the current file label
+                        currentFileLabel.setText("Current file: " + fileChooser.getSelectedFile().getName());
+                        
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Successfully exported " + creatures.size() + " creatures to " + fileChooser.getSelectedFile().getName(),
+                            "Export Successful",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Error exporting creatures: " + ex.getMessage(),
+                            "Export Error",
+                            JOptionPane.ERROR_MESSAGE
+                        );
+                        ex.printStackTrace();
+                    }
+                }
+            } else if (choice == 1) { // Export Selected
+                // Get the selected creature
+                String selectedCreatureName = creatureList.getSelectedValue();
+                if (selectedCreatureName == null) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "Please select a creature to export.",
+                        "No Selection",
+                        JOptionPane.WARNING_MESSAGE
+                    );
+                    return;
+                }
+                
+                // Find the creature with this name
+                Creature selectedCreature = findCreatureByName(selectedCreatureName);
+                if (selectedCreature == null) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "Selected creature not found.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+                    return;
+                }
+                
+                // Create a file chooser for selecting export location
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Export Creature");
+                fileChooser.setSelectedFile(new File(selectedCreatureName + ".txt"));
+                fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files (*.txt)", "txt"));
+                
+                int returnVal = fileChooser.showSaveDialog(this);
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = fileChooser.getSelectedFile();
+                    // Ensure file has .txt extension
+                    String filePath = file.getPath();
+                    if (!filePath.toLowerCase().endsWith(".txt")) {
+                        filePath += ".txt";
+                    }
+                    
+                    try {
+                        // Create a list with just the selected creature
+                        List<Creature> singleCreature = new ArrayList<>();
+                        singleCreature.add(selectedCreature);
+                        CreatureImportExportUtil.saveCreaturesToFile(filePath, singleCreature, availableItems);
+                        
+                        // Update the current file label
+                        currentFileLabel.setText("Current file: " + file.getName());
+                        
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Successfully exported creature '" + selectedCreatureName + "' to " + file.getName(),
+                            "Export Successful",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Error exporting creature: " + ex.getMessage(),
+                            "Export Error",
+                            JOptionPane.ERROR_MESSAGE
+                        );
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        });
+        
+        // Add action listener for import button
+        importButton.addActionListener(e -> {
+            // Present two options for import
+            String[] options = {"Import All", "Import Single"};
+            int choice = JOptionPane.showOptionDialog(
+                this,
+                "Do you want to import all creatures from a file or just import a single creature?",
+                "Import Options",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]
+            );
+            
+            if (choice == 0) { // Import All
+                // Create a file chooser for selecting import file
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Import All Creatures");
+                fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files (*.txt)", "txt"));
+                
+                int returnVal = fileChooser.showOpenDialog(this);
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = fileChooser.getSelectedFile();
+                    try {
+                        // Import creatures from the selected file
+                        List<Creature> importedCreatures = CreatureImportExportUtil.loadPredefinedCreatures(
+                            file.getPath(), availableItems);
+                        
+                        // Ask user if they want to replace or merge
+                        String[] mergeOptions = {"Replace All", "Merge with Existing"};
+                        int mergeChoice = JOptionPane.showOptionDialog(
+                            this,
+                            "Found " + importedCreatures.size() + " creatures in file.\n" +
+                            "Do you want to replace all existing creatures or merge with them?",
+                            "Import Options",
+                            JOptionPane.DEFAULT_OPTION,
+                            JOptionPane.QUESTION_MESSAGE,
+                            null,
+                            mergeOptions,
+                            mergeOptions[1]
+                        );
+                        
+                        if (mergeChoice == 0) { // Replace All
+                            creatures.clear();
+                            creatures.addAll(importedCreatures);
+                        } else { // Merge with Existing
+                            // Create a map of existing creature names
+                            Set<String> existingNames = new HashSet<>();
+                            for (Creature creature : creatures) {
+                                existingNames.add(creature.getName());
+                            }
+                            
+                            // Add only creatures with unique names
+                            int addedCount = 0;
+                            for (Creature creature : importedCreatures) {
+                                if (!existingNames.contains(creature.getName())) {
+                                    creatures.add(creature);
+                                    addedCount++;
+                                }
+                            }
+                            
+                            // Show message about merge results
+                            JOptionPane.showMessageDialog(
+                                this,
+                                "Added " + addedCount + " new creatures.\n" +
+                                "Skipped " + (importedCreatures.size() - addedCount) + " creatures with duplicate names.",
+                                "Import Results",
+                                JOptionPane.INFORMATION_MESSAGE
+                            );
+                        }
+                        
+                        // Update the list and save to all_creatures.txt
+                        refreshCreatureList();
+                        CreatureImportExportUtil.saveCreaturesToFile("all_creatures.txt", creatures, availableItems);
+                        
+                        // Update the current file label
+                        currentFileLabel.setText("Current file: " + file.getName());
+                        
+                        // Select the first creature in the list if any
+                        if (!creatures.isEmpty()) {
+                            creatureList.setSelectedIndex(0);
+                        }
+                        
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Error importing creatures: " + ex.getMessage(),
+                            "Import Error",
+                            JOptionPane.ERROR_MESSAGE
+                        );
+                        ex.printStackTrace();
+                    }
+                }
+            } else if (choice == 1) { // Import Single
+                // Create a file chooser for selecting import file
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Import Single Creature");
+                fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files (*.txt)", "txt"));
+                
+                int returnVal = fileChooser.showOpenDialog(this);
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = fileChooser.getSelectedFile();
+                    try {
+                        // Import creatures from the selected file
+                        List<Creature> importedCreatures = CreatureImportExportUtil.loadPredefinedCreatures(
+                            file.getPath(), availableItems);
+                        
+                        if (importedCreatures.isEmpty()) {
+                            JOptionPane.showMessageDialog(
+                                this,
+                                "No creatures found in the selected file.",
+                                "Import Error",
+                                JOptionPane.ERROR_MESSAGE
+                            );
+                            return;
+                        }
+                        
+                        // Get the first creature
+                        Creature importedCreature = importedCreatures.get(0);
+                        
+                        // Check if a creature with this name already exists
+                        boolean exists = false;
+                        for (Creature creature : creatures) {
+                            if (creature.getName().equals(importedCreature.getName())) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        
+                        if (exists) {
+                            // Ask user if they want to replace the existing creature
+                            int replaceChoice = JOptionPane.showConfirmDialog(
+                                this,
+                                "A creature with name '" + importedCreature.getName() + "' already exists.\n" +
+                                "Do you want to replace it?",
+                                "Duplicate Name",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE
+                            );
+                            
+                            if (replaceChoice == JOptionPane.YES_OPTION) {
+                                // Remove the existing creature
+                                creatures.removeIf(c -> c.getName().equals(importedCreature.getName()));
+                                // Add the imported creature
+                                creatures.add(importedCreature);
+                            } else {
+                                // Prompt for a new name
+                                String newName = JOptionPane.showInputDialog(
+                                    this,
+                                    "Please enter a new name for the imported creature:",
+                                    "Rename Imported Creature",
+                                    JOptionPane.PLAIN_MESSAGE
+                                );
+                                
+                                if (newName != null && !newName.trim().isEmpty()) {
+                                    importedCreature.setName(newName);
+                                    creatures.add(importedCreature);
+                                } else {
+                                    JOptionPane.showMessageDialog(
+                                        this,
+                                        "Import cancelled.",
+                                        "Import Cancelled",
+                                        JOptionPane.INFORMATION_MESSAGE
+                                    );
+                                    return;
+                                }
+                            }
+                        } else {
+                            // Add the imported creature
+                            creatures.add(importedCreature);
+                        }
+                        
+                        // Update the list and save to all_creatures.txt
+                        refreshCreatureList();
+                        CreatureImportExportUtil.saveCreaturesToFile("all_creatures.txt", creatures, availableItems);
+                        
+                        // Update the current file label
+                        currentFileLabel.setText("Current file: " + file.getName());
+                        
+                        // Select the imported creature
+                        creatureList.setSelectedValue(importedCreature.getName(), true);
+                        
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Successfully imported creature '" + importedCreature.getName() + "'",
+                            "Import Successful",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                        
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                            this,
+                            "Error importing creature: " + ex.getMessage(),
+                            "Import Error",
+                            JOptionPane.ERROR_MESSAGE
+                        );
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        });
+        
+        buttonGroupPanel.add(importButton);
+        buttonGroupPanel.add(exportButton);
+        buttonGroupPanel.add(defaultButton);
+        
+        // Add the button panel to the top
+        topButtonPanel.add(buttonGroupPanel, BorderLayout.NORTH);
+        
+        // Add the current file label below the buttons
+        topButtonPanel.add(currentFileLabel, BorderLayout.SOUTH);
+        
+        panel.add(topButtonPanel, BorderLayout.NORTH);
+        
+        // Main content panel with list on left, form on right
+        JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
+        
+        // Create creature list on the left
+        creatureListModel = new DefaultListModel<>();
+        
+        // Populate with creatures from our creatures list
+        refreshCreatureList();
+        
+        creatureList = new JList<>(creatureListModel);
+        creatureList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        creatureList.setBorder(BorderFactory.createEtchedBorder());
+        JScrollPane listScrollPane = new JScrollPane(creatureList);
+        listScrollPane.setPreferredSize(new Dimension(180, 400));
+        
+        // Add a selection listener to load creature data when selected
+        creatureList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                loadSelectedCreature();
+            }
+        });
+        
+        // Add + button at the bottom of the list
+        JPanel listPanel = new JPanel(new BorderLayout());
+        listPanel.add(listScrollPane, BorderLayout.CENTER);
+        
+        JPanel listButtonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton addCreatureButton = new JButton("+");
+        JButton deleteCreatureButton = new JButton("-");
+        
+        // Add action listener to add new creature button
+        addCreatureButton.addActionListener(e -> {
+            // Prompt for the new creature name
+            String newCreatureName = JOptionPane.showInputDialog(
+                this,
+                "Enter name for new creature:",
+                "New Creature",
+                JOptionPane.PLAIN_MESSAGE
+            );
+            
+            if (newCreatureName != null && !newCreatureName.trim().isEmpty()) {
+                // Check if a creature with this name already exists
+                boolean exists = false;
+                for (Creature creature : creatures) {
+                    if (creature.getName().equals(newCreatureName)) {
+                        exists = true;
+                        break;
+                    }
+                }
+                
+                if (exists) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "A creature with name '" + newCreatureName + "' already exists.",
+                        "Duplicate Name",
+                        JOptionPane.WARNING_MESSAGE
+                    );
+                } else {
+                    // Create a new creature with default properties
+                    Color defaultColor = new Color(200, 100, 100); // Reddish
+                    Creature newCreature = new Creature(
+                        newCreatureName, 
+                        ImageUtils.createColoredIcon(defaultColor, 32, 32),
+                        "New creature - customize me!"
+                    );
+                    
+                    // Set default properties
+                    newCreature.setColor(defaultColor);
+                    newCreature.setStrengthPenalty(0);
+                    newCreature.setWaterPenalty(0);
+                    newCreature.setGoldPenalty(0);
+                    newCreature.setHostile(false);
+                    newCreature.setCanBeTrapped(true);
+                    
+                    // Add to all difficulty levels by default
+                    for (int i = 1; i <= 6; i++) {
+                        newCreature.addDifficultyLevel(i);
+                    }
+                    
+                    // Add the new creature to the list
+                    creatures.add(newCreature);
+                    
+                    // Update the list model
+                    refreshCreatureList();
+                    
+                    // Select the new creature
+                    creatureList.setSelectedValue(newCreatureName, true);
+                    
+                    // Save to file
+                    CreatureImportExportUtil.saveCreaturesToFile("all_creatures.txt", creatures, availableItems);
+                }
+            }
+        });
+        
+        // Add action listener to delete selected creature button
+        deleteCreatureButton.addActionListener(e -> {
+            String selectedCreatureName = creatureList.getSelectedValue();
+            if (selectedCreatureName == null) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Please select a creature to delete.",
+                    "No Selection",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+            
+            // Confirm deletion
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to delete the creature '" + selectedCreatureName + "'?",
+                "Confirm Deletion",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            
+            if (confirm == JOptionPane.YES_OPTION) {
+                // Find and remove the creature
+                Creature toRemove = null;
+                for (Creature creature : creatures) {
+                    if (creature.getName().equals(selectedCreatureName)) {
+                        toRemove = creature;
+                        break;
+                    }
+                }
+                
+                if (toRemove != null) {
+                    creatures.remove(toRemove);
+                    
+                    // Update the list model
+                    refreshCreatureList();
+                    
+                    // Select the first creature in the list if any
+                    if (!creatures.isEmpty()) {
+                        creatureList.setSelectedIndex(0);
+                    }
+                    
+                    // Clear the form if no creature is selected
+                    if (creatureList.getSelectedValue() == null) {
+                        nameField.setText("");
+                        strengthPenaltyCheckBox.setSelected(false);
+                        waterPenaltyCheckBox.setSelected(false);
+                        goldPenaltyCheckBox.setSelected(false);
+                        strengthPenaltySpinner.setValue(0);
+                        waterPenaltySpinner.setValue(0);
+                        goldPenaltySpinner.setValue(0);
+                        strengthPenaltySpinner.setEnabled(false);
+                        waterPenaltySpinner.setEnabled(false);
+                        goldPenaltySpinner.setEnabled(false);
+                        dropsComboBox.setSelectedIndex(0);
+                    }
+                    
+                    // Save changes to the file
+                    CreatureImportExportUtil.saveCreaturesToFile("all_creatures.txt", creatures, availableItems);
+                }
+            }
+        });
+        
+        // Add buttons to the panel
+        listButtonPanel.add(addCreatureButton);
+        listButtonPanel.add(deleteCreatureButton);
+        listPanel.add(listButtonPanel, BorderLayout.SOUTH);
+        
+        contentPanel.add(listPanel, BorderLayout.WEST);
+        
+        // Create the form panel on the right
+        JPanel formPanel = new JPanel(new BorderLayout(10, 10));
+        
+        // Add name field at the top
+        JPanel namePanel = new JPanel(new BorderLayout(5, 5));
+        namePanel.setBorder(BorderFactory.createTitledBorder("Creature Name"));
+        nameField = new JTextField();
+        namePanel.add(nameField, BorderLayout.CENTER);
+        
+        // Top section with icon, save and exit buttons
+        JPanel topFormPanel = new JPanel(new BorderLayout());
+        topFormPanel.add(namePanel, BorderLayout.NORTH);
+        
+        // Icon dropdown and display
+        iconPanel = new JPanel(new BorderLayout());
+        iconComboBox = new JComboBox<>(new String[]{"Default", "Deer", "Wolf", "Bear", "Custom..."});
+        iconPanel.add(iconComboBox, BorderLayout.NORTH);
+        
+        // Add color chooser button
+        JPanel colorPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        colorButton = new JButton("Change Color");
+        colorButton.setToolTipText("Click to change the creature's color");
+        colorPanel.add(colorButton);
+        
+        // Add action listener to show color chooser dialog
+        colorButton.addActionListener(e -> {
+            Color newColor = JColorChooser.showDialog(
+                NPCEditor.this, 
+                "Choose Creature Color", 
+                creatureColor);
+            
+            if (newColor != null) {
+                creatureColor = newColor;
+                // Update the icon with the new color
+                ImageIcon newIcon = ImageUtils.createColoredIcon(creatureColor, 120, 120);
+                iconLabel.setIcon(newIcon);
+            }
+        });
+        
+        iconPanel.add(colorPanel, BorderLayout.SOUTH);
+        
+        // Sample image display
+        iconLabel = new JLabel();
+        iconLabel.setPreferredSize(new Dimension(120, 120));
+        iconLabel.setBorder(BorderFactory.createEtchedBorder());
+        
+        // Create a colored icon as a placeholder using our creatureColor
+        ImageIcon deerIcon = ImageUtils.createColoredIcon(creatureColor, 120, 120);
+        iconLabel.setIcon(deerIcon);
+        iconPanel.add(iconLabel, BorderLayout.CENTER);
+        
+        // Button panel for save/exit
+        JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+        JButton saveButton = new JButton("Save");
+        JButton exitButton = new JButton("Exit");
+        
+        // Add action to save button
+        saveButton.addActionListener(e -> saveCreature());
+        
+        buttonPanel.add(saveButton);
+        buttonPanel.add(exitButton);
+        
+        topFormPanel.add(iconPanel, BorderLayout.CENTER);
+        topFormPanel.add(buttonPanel, BorderLayout.EAST);
+        
+        // Property grid at the bottom
+        JPanel propertyPanel = new JPanel(new BorderLayout());
+        propertyPanel.setBorder(BorderFactory.createTitledBorder("Properties"));
+        
+        // Create the property table with headers
+        String[] columnNames = {"Drops", "Is Deadly", "Penalty", "Penalty Amount"};
+        Object[][] data = {
+            {"Select Resource", Boolean.FALSE, "Select Cost", "0"}
+        };
+        
+        // Create a panel with a grid layout for the form fields
+        JPanel propertyGrid = new JPanel(new GridLayout(2, 2, 5, 5));
+        
+        // Drops combo
+        JPanel dropsPanel = new JPanel(new BorderLayout());
+        dropsPanel.setBorder(BorderFactory.createTitledBorder("Drops"));
+        
+        // Create a list of item names starting with "Select Resource"
+        String[] itemNames = new String[availableItems.size() + 1];
+        itemNames[0] = "Select Resource";
+        for (int i = 0; i < availableItems.size(); i++) {
+            itemNames[i + 1] = availableItems.get(i).getName();
+        }
+        
+        dropsComboBox = new JComboBox<>(itemNames);
+        dropsPanel.add(dropsComboBox, BorderLayout.NORTH);
+        
+        // Dropdown content panel for resources to show the selected item's details
+        JPanel resourceListPanel = new JPanel();
+        resourceListPanel.setLayout(new BoxLayout(resourceListPanel, BoxLayout.Y_AXIS));
+        resourceListPanel.setBorder(BorderFactory.createEtchedBorder());
+        resourceListPanel.setPreferredSize(new Dimension(100, 80));
+        
+        // This will be updated when an item is selected
+        JLabel resourceInfoLabel = new JLabel("<html>Select an item to<br>see details here</html>");
+        resourceListPanel.add(resourceInfoLabel);
+        
+        // Add action listener to update the resource information panel when an item is selected
+        dropsComboBox.addActionListener(e -> {
+            String selectedItemName = (String)dropsComboBox.getSelectedItem();
+            if (selectedItemName != null && !selectedItemName.equals("Select Resource")) {
+                // Find the selected item
+                for (Item item : availableItems) {
+                    if (item.getName().equals(selectedItemName)) {
+                        // Update the resource information panel
+                        resourceInfoLabel.setText(
+                            "<html>" +
+                            item.getName() + "<br>" +
+                            "Food: " + item.getFoodValue() + "<br>" +
+                            "Water: " + item.getWaterValue() + "<br>" +
+                            "Gold: " + item.getGoldValue() +
+                            "</html>"
+                        );
+                        break;
+                    }
+                }
+            } else {
+                resourceInfoLabel.setText("<html>Select an item to<br>see details here</html>");
+            }
+        });
+        
+        dropsPanel.add(resourceListPanel, BorderLayout.CENTER);
+        
+        // Panel with "Set Zero For All Penalties" button
+        JPanel zeroPanel = new JPanel(new BorderLayout());
+        zeroPanel.setBorder(BorderFactory.createTitledBorder("Reset Penalties"));
+        JButton resetPenaltiesButton = new JButton("Set Zero");
+        resetPenaltiesButton.setToolTipText("Set all penalties to zero");
+        
+        // Add action listener to set all penalties to zero
+        resetPenaltiesButton.addActionListener(e -> {
+            // Uncheck all penalty checkboxes
+            strengthPenaltyCheckBox.setSelected(false);
+            waterPenaltyCheckBox.setSelected(false);
+            goldPenaltyCheckBox.setSelected(false);
+            
+            // Set all spinners to zero
+            strengthPenaltySpinner.setValue(0);
+            waterPenaltySpinner.setValue(0);
+            goldPenaltySpinner.setValue(0);
+            
+            // Disable all spinners
+            strengthPenaltySpinner.setEnabled(false);
+            waterPenaltySpinner.setEnabled(false);
+            goldPenaltySpinner.setEnabled(false);
+        });
+        
+        zeroPanel.add(resetPenaltiesButton, BorderLayout.NORTH);
+        
+        // Penalties panel with checkboxes and value inputs
+        JPanel penaltyPanel = new JPanel(new BorderLayout());
+        penaltyPanel.setBorder(BorderFactory.createTitledBorder("Penalties"));
+        
+        // Create a grid layout for the penalty values (2 columns: checkbox, value spinner)
+        JPanel penaltyGrid = new JPanel(new GridLayout(3, 2, 5, 5));
+        
+        // Strength penalty
+        strengthPenaltyCheckBox = new JCheckBox("Strength");
+        strengthPenaltySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        penaltyGrid.add(strengthPenaltyCheckBox);
+        penaltyGrid.add(strengthPenaltySpinner);
+        
+        // Water penalty
+        waterPenaltyCheckBox = new JCheckBox("Water");
+        waterPenaltySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        penaltyGrid.add(waterPenaltyCheckBox);
+        penaltyGrid.add(waterPenaltySpinner);
+        
+        // Gold penalty
+        goldPenaltyCheckBox = new JCheckBox("Gold");
+        goldPenaltySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        penaltyGrid.add(goldPenaltyCheckBox);
+        penaltyGrid.add(goldPenaltySpinner);
+        
+        // Add tooltips to explain what these penalties do
+        strengthPenaltyCheckBox.setToolTipText("When checked, this creature will reduce player's strength when encountered");
+        waterPenaltyCheckBox.setToolTipText("When checked, this creature will reduce player's water when encountered");
+        goldPenaltyCheckBox.setToolTipText("When checked, this creature will reduce player's gold when encountered");
+        
+        // Add action listeners to enable/disable spinners based on checkbox state
+        strengthPenaltyCheckBox.addActionListener(e -> strengthPenaltySpinner.setEnabled(strengthPenaltyCheckBox.isSelected()));
+        waterPenaltyCheckBox.addActionListener(e -> waterPenaltySpinner.setEnabled(waterPenaltyCheckBox.isSelected()));
+        goldPenaltyCheckBox.addActionListener(e -> goldPenaltySpinner.setEnabled(goldPenaltyCheckBox.isSelected()));
+        
+        // Initialize spinners to disabled state
+        strengthPenaltySpinner.setEnabled(false);
+        waterPenaltySpinner.setEnabled(false);
+        goldPenaltySpinner.setEnabled(false);
+        
+        // Add the grid to the panel
+        penaltyPanel.add(penaltyGrid, BorderLayout.CENTER);
+        
+        // Add a note about what penalties do
+        JLabel penaltyExplanation = new JLabel("<html>Penalties reduce player stats when this creature is encountered</html>");
+        penaltyExplanation.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        penaltyPanel.add(penaltyExplanation, BorderLayout.SOUTH);
+        
+        // Create difficulty level panel
+        JPanel difficultyPanel = new JPanel(new BorderLayout());
+        difficultyPanel.setBorder(BorderFactory.createTitledBorder("Difficulty Levels"));
+        
+        // Create a grid layout for the difficulty checkboxes (3 rows, 2 columns)
+        JPanel difficultyGrid = new JPanel(new GridLayout(3, 2, 5, 5));
+        
+        // Create named difficulty level checkboxes (matching the Item editor format)
+        difficultyCheckBoxes[0] = new JCheckBox("Easy");
+        difficultyCheckBoxes[0].setToolTipText("When checked, this creature will appear in Easy difficulty level (1)");
+        
+        difficultyCheckBoxes[1] = new JCheckBox("Medium");
+        difficultyCheckBoxes[1].setToolTipText("When checked, this creature will appear in Medium difficulty level (2)");
+        
+        difficultyCheckBoxes[2] = new JCheckBox("Hard");
+        difficultyCheckBoxes[2].setToolTipText("When checked, this creature will appear in Hard difficulty level (3)");
+        
+        difficultyCheckBoxes[3] = new JCheckBox("Expert");
+        difficultyCheckBoxes[3].setToolTipText("When checked, this creature will appear in Expert difficulty level (4)");
+        
+        difficultyCheckBoxes[4] = new JCheckBox("Master");
+        difficultyCheckBoxes[4].setToolTipText("When checked, this creature will appear in Master difficulty level (5)");
+        
+        difficultyCheckBoxes[5] = new JCheckBox("Impossible");
+        difficultyCheckBoxes[5].setToolTipText("When checked, this creature will appear in Impossible difficulty level (6)");
+        
+        // Add all checkboxes to the grid
+        for (int i = 0; i < 6; i++) {
+            difficultyGrid.add(difficultyCheckBoxes[i]);
+        }
+        
+        difficultyPanel.add(difficultyGrid, BorderLayout.CENTER);
+        
+        // Add a note about what difficulty levels do
+        JLabel difficultyExplanation = new JLabel("<html>Select which game difficulty levels this creature appears in</html>");
+        difficultyExplanation.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        difficultyPanel.add(difficultyExplanation, BorderLayout.SOUTH);
+        
+        // Add all components to property grid
+        propertyGrid.add(dropsPanel);
+        propertyGrid.add(zeroPanel);
+        propertyGrid.add(penaltyPanel);
+        propertyGrid.add(difficultyPanel);
+        
+        propertyPanel.add(propertyGrid, BorderLayout.CENTER);
+        
+        // Add top and property sections to form panel
+        formPanel.add(topFormPanel, BorderLayout.NORTH);
+        formPanel.add(propertyPanel, BorderLayout.CENTER);
+        
+        contentPanel.add(formPanel, BorderLayout.CENTER);
+        
+        panel.add(contentPanel, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the trader panel (simplified placeholder for now).
+     * 
+     * @return The configured trader panel.
+     */
+    private JPanel createTraderPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Traders Editor"));
+        
+        // Create trader list panel (left side)
+        JPanel traderListPanel = new JPanel(new BorderLayout());
+        traderListPanel.setBorder(BorderFactory.createTitledBorder("Available Traders"));
+        
+        // Create a list to display traders
+        DefaultListModel<String> traderListModel = new DefaultListModel<>();
+        JList<String> traderList = new JList<>(traderListModel);
+        traderList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        // Add selection listener to the trader list
+        traderList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                String selectedTraderName = traderList.getSelectedValue();
+                if (selectedTraderName != null) {
+                    loadSelectedTrader(selectedTraderName);
+                }
+            }
+        });
+        
+        // Add available traders to the list
+        if (traders == null) {
+            traders = new ArrayList<>();
+        }
+        
+        // Load predefined traders from file if the list is empty
+        if (traders.isEmpty()) {
+            try {
+                traders = com.wss.swing.util.TraderImportExportUtil.loadPredefinedTraders("all_traders.txt", availableItems);
+                System.out.println("Loaded " + traders.size() + " predefined traders");
+            } catch (Exception e) {
+                System.err.println("Error loading predefined traders: " + e.getMessage());
+                e.printStackTrace();
+                
+                // Create some default traders if loading fails
+                if (traders.isEmpty()) {
+                    traders.add(createDefaultTrader("Merchant", "Hello traveler! Want to trade?", 50));
+                    traders.add(createDefaultTrader("Wanderer", "I have rare items from distant lands.", 60));
+                    traders.add(createDefaultTrader("Hunter", "I'll trade you pelts for supplies.", 40));
+                }
+            }
+        }
+        
+        // Add trader names to the list model
+        for (Trader trader : traders) {
+            traderListModel.addElement(trader.getName());
+        }
+        
+        // Add trader list to a scroll pane
+        JScrollPane traderScrollPane = new JScrollPane(traderList);
+        traderListPanel.add(traderScrollPane, BorderLayout.CENTER);
+        
+        // Create buttons for trader list management
+        JPanel traderButtonPanel = new JPanel(new FlowLayout());
+        JButton addTraderButton = new JButton("Add");
+        JButton removeTraderButton = new JButton("Remove");
+        JButton importTraderButton = new JButton("Import");
+        JButton exportTraderButton = new JButton("Export");
+        
+        traderButtonPanel.add(addTraderButton);
+        traderButtonPanel.add(removeTraderButton);
+        traderButtonPanel.add(importTraderButton);
+        traderButtonPanel.add(exportTraderButton);
+        traderListPanel.add(traderButtonPanel, BorderLayout.SOUTH);
+        
+        // Create trader property panel (right side)
+        JPanel traderPropertyPanel = new JPanel(new BorderLayout());
+        traderPropertyPanel.setBorder(BorderFactory.createTitledBorder("Trader Properties"));
+        
+        // Create tabbed pane for different property categories
+        JTabbedPane traderTabs = new JTabbedPane();
+        
+        // Basic properties tab
+        JPanel basicPropertiesPanel = createTraderBasicPropertiesPanel();
+        traderTabs.addTab("Basic Properties", basicPropertiesPanel);
+        
+        // Inventory tab
+        JPanel inventoryPanel = createTraderInventoryPanel();
+        traderTabs.addTab("Inventory", inventoryPanel);
+        
+        // Trade Behavior tab
+        JPanel tradeBehaviorPanel = createTraderBehaviorPanel();
+        traderTabs.addTab("Trade Behavior", tradeBehaviorPanel);
+        
+        // Penalties tab
+        JPanel penaltiesPanel = createTraderPenaltiesPanel();
+        traderTabs.addTab("Penalties", penaltiesPanel);
+        
+        traderPropertyPanel.add(traderTabs, BorderLayout.CENTER);
+        
+        // Create update button panel
+        JPanel updatePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton updateTraderButton = new JButton("Update Trader");
+        updatePanel.add(updateTraderButton);
+        traderPropertyPanel.add(updatePanel, BorderLayout.SOUTH);
+        
+        // Create split pane to divide the two panels
+        JSplitPane traderSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, traderListPanel, traderPropertyPanel);
+        traderSplitPane.setDividerLocation(250);
+        panel.add(traderSplitPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the basic properties panel for traders.
+     *
+     * @return The basic properties panel.
+     */
+    private JPanel createTraderBasicPropertiesPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Create text fields and other components for basic properties
+        JTextField traderNameField = new JTextField(20);
+        JTextArea encounterDialogueArea = new JTextArea(4, 20);
+        encounterDialogueArea.setLineWrap(true);
+        encounterDialogueArea.setWrapStyleWord(true);
+        JScrollPane encounterScrollPane = new JScrollPane(encounterDialogueArea);
+        
+        JCheckBox wanderingCheckbox = new JCheckBox("Wandering");
+        
+        // Create icon selector panel
+        JPanel iconPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel traderIconLabel = new JLabel();
+        traderIconLabel.setPreferredSize(new Dimension(64, 64));
+        traderIconLabel.setBorder(BorderFactory.createEtchedBorder());
+        JButton setIconButton = new JButton("Set Icon");
+        JButton setColorButton = new JButton("Set Color");
+        iconPanel.add(traderIconLabel);
+        iconPanel.add(setIconButton);
+        iconPanel.add(setColorButton);
+        
+        // Create difficulty level panel
+        JPanel difficultyPanel = new JPanel(new GridLayout(2, 3, 5, 5));
+        difficultyPanel.setBorder(BorderFactory.createTitledBorder("Appears in Difficulty Levels"));
+        
+        JCheckBox[] traderDifficultyCheckBoxes = new JCheckBox[6];
+        traderDifficultyCheckBoxes[0] = new JCheckBox("Easy");
+        traderDifficultyCheckBoxes[1] = new JCheckBox("Medium");
+        traderDifficultyCheckBoxes[2] = new JCheckBox("Hard");
+        traderDifficultyCheckBoxes[3] = new JCheckBox("Expert");
+        traderDifficultyCheckBoxes[4] = new JCheckBox("Master");
+        traderDifficultyCheckBoxes[5] = new JCheckBox("Impossible");
+        
+        for (JCheckBox checkBox : traderDifficultyCheckBoxes) {
+            difficultyPanel.add(checkBox);
+        }
+        
+        // Lay out the components in the panel
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Name:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(traderNameField, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Encounter Dialogue:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        panel.add(encounterScrollPane, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        panel.add(wanderingCheckbox, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        panel.add(iconPanel, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(difficultyPanel, gbc);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the trader inventory panel.
+     *
+     * @return The inventory panel.
+     */
+    private JPanel createTraderInventoryPanel() {
+        // Store this panel and table model as class variables to allow updating later
+        JPanel inventoryPanel = new JPanel(new BorderLayout(5, 5));
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        
+        // Create a table for inventory items
+        String[] columnNames = {"Item", "Cost Type", "Price"};
+        DefaultTableModel inventoryTableModel = new DefaultTableModel(columnNames, 0);
+        JTable inventoryTable = new JTable(inventoryTableModel);
+        inventoryTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        inventoryTable.setRowHeight(25);
+        
+        // Set up the "Cost Type" column as a dropdown cell editor
+        JComboBox<String> costTypeComboBox = new JComboBox<>(new String[]{"Gold", "Water", "Food"});
+        TableColumn costTypeColumn = inventoryTable.getColumnModel().getColumn(1);
+        costTypeColumn.setCellEditor(new DefaultCellEditor(costTypeComboBox));
+        
+        JScrollPane tableScrollPane = new JScrollPane(inventoryTable);
+        
+        // Create panel for adding items
+        JPanel addItemPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 5, 2, 5);
+        
+        // Create components for item selection and addition
+        JComboBox<String> itemComboBox = new JComboBox<>();
+        
+        // Populate the combo box with available items
+        for (Item item : availableItems) {
+            itemComboBox.addItem(item.getName());
+        }
+        
+        JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, 100, 1));
+        JSpinner priceSpinner = new JSpinner(new SpinnerNumberModel(10, 1, 999, 5));
+        JButton addItemButton = new JButton("Add to Inventory");
+        JButton removeItemButton = new JButton("Remove Selected");
+        
+        // Add components to panel
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        addItemPanel.add(new JLabel("Item:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        addItemPanel.add(itemComboBox, gbc);
+        
+        gbc.gridx = 2;
+        gbc.weightx = 0.0;
+        gbc.fill = GridBagConstraints.NONE;
+        addItemPanel.add(new JLabel("Cost Type:"), gbc);
+        
+        gbc.gridx = 3;
+        gbc.weightx = 0.5;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        JComboBox<String> costTypeDropdown = new JComboBox<>(new String[]{"Gold", "Water", "Food"});
+        costTypeDropdown.setSelectedItem("Gold");
+        addItemPanel.add(costTypeDropdown, gbc);
+        
+        gbc.gridx = 4;
+        gbc.weightx = 0.0;
+        gbc.fill = GridBagConstraints.NONE;
+        addItemPanel.add(new JLabel("Price:"), gbc);
+        
+        gbc.gridx = 5;
+        gbc.weightx = 0.3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        priceSpinner.setPreferredSize(new Dimension(60, priceSpinner.getPreferredSize().height));
+        addItemPanel.add(priceSpinner, gbc);
+        
+        // Add buttons in a new row
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 3;
+        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        addItemButton.addActionListener(e -> {
+            // Get the selected item
+            String selectedItemName = (String) itemComboBox.getSelectedItem();
+            if (selectedItemName == null || selectedItemName.isEmpty()) {
+                return;
+            }
+            
+            // Get the cost type and price
+            String costType = (String) costTypeDropdown.getSelectedItem();
+            int price = (Integer) priceSpinner.getValue();
+            
+            // Add the item to the table
+            inventoryTableModel.addRow(new Object[]{selectedItemName, costType, price});
+            
+            // Find the corresponding item object
+            Item selectedItem = null;
+            for (Item item : availableItems) {
+                if (item.getName().equals(selectedItemName)) {
+                    selectedItem = item;
+                    break;
+                }
+            }
+            
+            // If we found the item, add it to the trader's trade offers
+            if (selectedItem != null && selectedTrader != null) {
+                selectedTrader.addTradeOffer(selectedItem, costType, price);
+            }
+            
+            // Reset the price spinner
+            priceSpinner.setValue(10);
+        });
+        addItemPanel.add(addItemButton, gbc);
+        
+        gbc.gridx = 3;
+        gbc.gridwidth = 3;
+        removeItemButton.addActionListener(e -> {
+            int selectedRow = inventoryTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                // Remove the row from the table
+                inventoryTableModel.removeRow(selectedRow);
+                
+                // Remove from trader's trade offers if a trader is selected
+                if (selectedTrader != null && selectedRow < selectedTrader.getTradeOffers().size()) {
+                    selectedTrader.getTradeOffers().remove(selectedRow);
+                }
+            } else {
+                JOptionPane.showMessageDialog(panel,
+                    "Please select an item to remove.",
+                    "No Selection",
+                    JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        addItemPanel.add(removeItemButton, gbc);
+        
+        // Create a description panel with information about trading
+        JPanel descriptionPanel = new JPanel(new BorderLayout());
+        descriptionPanel.setBorder(BorderFactory.createTitledBorder("Trading Information"));
+        
+        JTextArea descriptionArea = new JTextArea(
+            "Items in a trader's inventory can be offered for trade. When the player suggests a trade, " +
+            "the trader offers an item for a certain price (gold, food, or water).\n\n" +
+            "If the player rejects a trade offer, the trader will randomly select another item from " +
+            "their inventory to offer. Traders can have multiple copies of the same item with different " +
+            "quantities and prices.\n\n" +
+            "The price value represents the base cost in gold. For food or water trades, the trader " +
+            "will calculate an equivalent value."
+        );
+        descriptionArea.setEditable(false);
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setWrapStyleWord(true);
+        descriptionArea.setBackground(panel.getBackground());
+        descriptionArea.setFont(new Font("SansSerif", Font.ITALIC, 12));
+        descriptionArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        descriptionPanel.add(new JScrollPane(descriptionArea), BorderLayout.CENTER);
+        
+        // Create a price range panel
+        JPanel priceRangePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        priceRangePanel.setBorder(BorderFactory.createTitledBorder("Price Variation"));
+        
+        JLabel minPriceLabel = new JLabel("Min Price Variation (%): ");
+        JSpinner minPriceSpinner = new JSpinner(new SpinnerNumberModel(80, 10, 100, 5));
+        
+        JLabel maxPriceLabel = new JLabel("Max Price Variation (%): ");
+        JSpinner maxPriceSpinner = new JSpinner(new SpinnerNumberModel(120, 100, 300, 5));
+        
+        // Update the price variation values when the spinners change
+        minPriceSpinner.addChangeListener(e -> {
+            if (selectedTrader != null) {
+                selectedTrader.setMinPriceVariation((Integer) minPriceSpinner.getValue());
+            }
+        });
+        
+        maxPriceSpinner.addChangeListener(e -> {
+            if (selectedTrader != null) {
+                selectedTrader.setMaxPriceVariation((Integer) maxPriceSpinner.getValue());
+            }
+        });
+        
+        // Update spinners when a trader is selected
+        if (selectedTrader != null) {
+            minPriceSpinner.setValue(selectedTrader.getMinPriceVariation());
+            maxPriceSpinner.setValue(selectedTrader.getMaxPriceVariation());
+        }
+        
+        priceRangePanel.add(minPriceLabel);
+        priceRangePanel.add(minPriceSpinner);
+        priceRangePanel.add(Box.createHorizontalStrut(15));
+        priceRangePanel.add(maxPriceLabel);
+        priceRangePanel.add(maxPriceSpinner);
+        
+        // Create a wrapper panel for the bottom controls
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(addItemPanel, BorderLayout.NORTH);
+        bottomPanel.add(priceRangePanel, BorderLayout.CENTER);
+        bottomPanel.add(descriptionPanel, BorderLayout.SOUTH);
+        
+        panel.add(tableScrollPane, BorderLayout.CENTER);
+        panel.add(bottomPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the trader behavior panel.
+     *
+     * @return The behavior panel.
+     */
+    private JPanel createTraderBehaviorPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Create spinners for trade behavior properties
+        JSpinner patienceSpinner = new JSpinner(new SpinnerNumberModel(5, 1, 20, 1));
+        JSpinner maxTradesSpinner = new JSpinner(new SpinnerNumberModel(5, 1, 20, 1));
+        
+        // Add movement pattern dropdown
+        JComboBox<String> movementPatternComboBox = new JComboBox<>();
+        movementPatternComboBox.addItem("Fixed");
+        movementPatternComboBox.addItem("Random");
+        movementPatternComboBox.addItem("Patrol");
+        movementPatternComboBox.addItem("Aggressive");
+        
+        // Add components to panel
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Patience (turns):"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(patienceSpinner, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Max Trades Offered:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(maxTradesSpinner, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Movement Pattern:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(movementPatternComboBox, gbc);
+        
+        // Add a panel for dialogues
+        JPanel dialoguePanel = new JPanel(new BorderLayout(5, 5));
+        dialoguePanel.setBorder(BorderFactory.createTitledBorder("Dialogue Options"));
+        
+        DefaultListModel<String> dialogueListModel = new DefaultListModel<>();
+        JList<String> dialogueList = new JList<>(dialogueListModel);
+        JScrollPane dialogueScrollPane = new JScrollPane(dialogueList);
+        
+        JPanel dialogueButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JTextField dialogueField = new JTextField(20);
+        JButton addDialogueButton = new JButton("Add");
+        JButton removeDialogueButton = new JButton("Remove");
+        
+        dialogueButtonPanel.add(dialogueField);
+        dialogueButtonPanel.add(addDialogueButton);
+        dialogueButtonPanel.add(removeDialogueButton);
+        
+        dialoguePanel.add(dialogueScrollPane, BorderLayout.CENTER);
+        dialoguePanel.add(dialogueButtonPanel, BorderLayout.SOUTH);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weighty = 1.0;
+        panel.add(dialoguePanel, gbc);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the trader penalties panel.
+     *
+     * @return The penalties panel.
+     */
+    private JPanel createTraderPenaltiesPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Create theft detection components
+        JLabel stealDetectionLabel = new JLabel("Steal Detection Chance (%):");
+        JSlider stealDetectionSlider = new JSlider(0, 100, 50);
+        stealDetectionSlider.setMajorTickSpacing(20);
+        stealDetectionSlider.setMinorTickSpacing(5);
+        stealDetectionSlider.setPaintTicks(true);
+        stealDetectionSlider.setPaintLabels(true);
+        
+        // Create aggro time spinner
+        JLabel aggroTimeLabel = new JLabel("Aggro Penalty Time (turns):");
+        JSpinner aggroTimeSpinner = new JSpinner(new SpinnerNumberModel(10, 0, 100, 1));
+        
+        // Create penalty type selector
+        JLabel penaltyTypeLabel = new JLabel("Penalty Type:");
+        JComboBox<String> penaltyTypeComboBox = new JComboBox<>();
+        penaltyTypeComboBox.addItem("Gold");
+        penaltyTypeComboBox.addItem("Food");
+        penaltyTypeComboBox.addItem("Water");
+        
+        // Create penalty amount spinner
+        JLabel penaltyAmountLabel = new JLabel("Penalty Amount:");
+        JSpinner penaltyAmountSpinner = new JSpinner(new SpinnerNumberModel(20, 0, 1000, 5));
+        
+        // Create resource penalty spinners
+        JPanel resourcePenaltyPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        resourcePenaltyPanel.setBorder(BorderFactory.createTitledBorder("Resource Penalties"));
+        
+        JSpinner strengthPenaltySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        JSpinner waterPenaltySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        JSpinner goldPenaltySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 1000, 5));
+        
+        resourcePenaltyPanel.add(new JLabel("Strength Penalty:"));
+        resourcePenaltyPanel.add(strengthPenaltySpinner);
+        resourcePenaltyPanel.add(new JLabel("Water Penalty:"));
+        resourcePenaltyPanel.add(waterPenaltySpinner);
+        resourcePenaltyPanel.add(new JLabel("Gold Penalty:"));
+        resourcePenaltyPanel.add(goldPenaltySpinner);
+        
+        // Add components to panel
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(stealDetectionLabel, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(stealDetectionSlider, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(aggroTimeLabel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(aggroTimeSpinner, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(penaltyTypeLabel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(penaltyTypeComboBox, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(penaltyAmountLabel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(penaltyAmountSpinner, gbc);
+        
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(resourcePenaltyPanel, gbc);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates a default trader for testing purposes.
+     *
+     * @param name The name of the trader.
+     * @param dialogue The encounter dialogue.
+     * @param stealDetection The steal detection chance.
+     * @return A new trader with default values.
+     */
+    private Trader createDefaultTrader(String name, String dialogue, int stealDetection) {
+        ImageIcon icon = ImageUtils.createColoredIcon(new Color(50, 100, 200), 32, 32);
+        Trader trader = new Trader(
+            name,
+            icon,
+            dialogue,
+            true, // wandering
+            5, // patience
+            stealDetection, // steal detection chance
+            10, // aggro penalty time
+            Trader.RESOURCE_TYPE_GOLD, // penalty type
+            20, // penalty amount
+            true // built-in (can't be deleted)
+        );
+        
+        trader.setColor(new Color(50, 100, 200));
+        
+        // Add some inventory items if available
+        if (!availableItems.isEmpty()) {
+            trader.getInventory().put(availableItems.get(0), 3);
+            if (availableItems.size() > 1) {
+                trader.getInventory().put(availableItems.get(1), 2);
+            }
+        }
+        
+        return trader;
+    }
+    
+    /**
+     * Creates the movement pattern panel.
+     * 
+     * @return The configured movement pattern panel.
+     */
+    private JPanel createMovementPatternPanel() {
+        // Use our placeholder panel that explains this feature will be implemented later
+        return new MovementPatternEditorNew();
+    }
+    
+    /**
+     * Loads the selected trader into the editor UI.
+     * 
+     * @param traderName The name of the trader to load.
+     */
+    private void loadSelectedTrader(String traderName) {
+        // Find the trader with this name
+        selectedTrader = null;
+        for (Trader trader : traders) {
+            if (trader.getName().equals(traderName)) {
+                selectedTrader = trader;
+                break;
+            }
+        }
+        
+        if (selectedTrader == null) {
+            return; // Trader not found
+        }
+        
+        // Clear the inventory table
+        DefaultTableModel inventoryTableModel = null;
+        for (Component comp : this.getComponents()) {
+            if (comp instanceof JTabbedPane) {
+                JTabbedPane tabs = (JTabbedPane) comp;
+                for (int i = 0; i < tabs.getTabCount(); i++) {
+                    if (tabs.getTitleAt(i).equals("Inventory")) {
+                        JPanel inventoryPanel = (JPanel) tabs.getComponentAt(i);
+                        for (Component inventoryComp : inventoryPanel.getComponents()) {
+                            if (inventoryComp instanceof JScrollPane) {
+                                JScrollPane scrollPane = (JScrollPane) inventoryComp;
+                                if (scrollPane.getViewport().getView() instanceof JTable) {
+                                    JTable table = (JTable) scrollPane.getViewport().getView();
+                                    inventoryTableModel = (DefaultTableModel) table.getModel();
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        
+        // Clear and populate the inventory table if found
+        if (inventoryTableModel != null) {
+            // Clear the table
+            while (inventoryTableModel.getRowCount() > 0) {
+                inventoryTableModel.removeRow(0);
+            }
+            
+            // Add the trader's trade offers to the table
+            for (TradeOffer offer : selectedTrader.getTradeOffers()) {
+                inventoryTableModel.addRow(new Object[]{
+                    offer.getItem().getName(),
+                    offer.getCostType(),
+                    offer.getBasePrice()
+                });
+            }
+        }
+        
+        // TODO: Update other UI fields (name, dialogue, etc.)
+    }
+    
+    /**
+     * Creates sample items for the editor.
+     */
+    private void createSampleItems() {
+        // Add some basic items
+        Item meat = new Item("Beef Meat", null);
+        meat.setFoodValue(5);
+        meat.setWaterValue(0);
+        meat.setGoldValue(2);
+        meat.setDescription("Fresh meat from a cow");
+        meat.setIcon(ImageUtils.createColoredIcon(new Color(200, 100, 100), 32, 32));
+        availableItems.add(meat);
+        
+        Item water = new Item("Water Bottle", null);
+        water.setFoodValue(0);
+        water.setWaterValue(10);
+        water.setGoldValue(1);
+        water.setDescription("Clean drinking water");
+        water.setIcon(ImageUtils.createColoredIcon(new Color(100, 150, 255), 32, 32));
+        availableItems.add(water);
+        
+        Item gold = new Item("Gold Coin", null);
+        gold.setFoodValue(0);
+        gold.setWaterValue(0);
+        gold.setGoldValue(5);
+        gold.setDescription("Currency used for trading");
+        gold.setIcon(ImageUtils.createColoredIcon(new Color(255, 215, 0), 32, 32));
+        availableItems.add(gold);
+    }
+    
+
+    
+    /**
+     * Gets the creatures list.
+     * 
+     * @return The list of creatures.
+     */
+    public List<Creature> getCreatures() {
+        return creatures;
+    }
+    
+    /**
+     * Gets the traders list.
+     * 
+     * @return The list of traders.
+     */
+    public List<Trader> getTraders() {
+        return traders;
+    }
+    
+    /**
+     * Gets the movement patterns list.
+     * 
+     * @return The list of movement patterns.
+     */
+    public List<MovementPattern> getMovementPatterns() {
+        return movementPatterns;
+    }
+    
+    /**
+     * Refreshes all editors with the latest data.
+     */
+    public void refreshAll() {
+        // Refresh editors if needed
+        loadSelectedCreature();
+    }
+    
+    /**
+     * Loads the currently selected creature from the list into the editor.
+     */
+    private void loadSelectedCreature() {
+        String selectedCreatureName = creatureList.getSelectedValue();
+        if (selectedCreatureName == null) {
+            return; // No selection
+        }
+        
+        // Find the creature with this name
+        Creature selectedCreature = findCreatureByName(selectedCreatureName);
+        
+        if (selectedCreature != null) {
+            // Load creature data into the UI
+            
+            // Update name field
+            nameField.setText(selectedCreature.getName());
+            
+            // Update penalties
+            int strengthPenalty = selectedCreature.getStrengthPenalty();
+            int waterPenalty = selectedCreature.getWaterPenalty();
+            int goldPenalty = selectedCreature.getGoldPenalty();
+            
+            // Set checkboxes based on whether penalties exist
+            strengthPenaltyCheckBox.setSelected(strengthPenalty > 0);
+            waterPenaltyCheckBox.setSelected(waterPenalty > 0);
+            goldPenaltyCheckBox.setSelected(goldPenalty > 0);
+            
+            // Set spinner values
+            strengthPenaltySpinner.setValue(strengthPenalty);
+            waterPenaltySpinner.setValue(waterPenalty);
+            goldPenaltySpinner.setValue(goldPenalty);
+            
+            // Enable/disable spinners based on checkbox state
+            strengthPenaltySpinner.setEnabled(strengthPenaltyCheckBox.isSelected());
+            waterPenaltySpinner.setEnabled(waterPenaltyCheckBox.isSelected());
+            goldPenaltySpinner.setEnabled(goldPenaltyCheckBox.isSelected());
+            
+            // Update item dropdown if creature has an item
+            if (selectedCreature.getItem() != null) {
+                dropsComboBox.setSelectedItem(selectedCreature.getItem().getName());
+            } else {
+                dropsComboBox.setSelectedIndex(0); // "Select Resource"
+            }
+            
+            // Update the creature color from the color property
+            creatureColor = selectedCreature.getColor();
+            if (creatureColor == null) {
+                creatureColor = Color.RED; // Default color if not set
+            }
+            
+            // Update the icon display with this color
+            ImageIcon colorIcon = ImageUtils.createColoredIcon(creatureColor, 120, 120);
+            
+            // Update the icon label directly
+            iconLabel.setIcon(colorIcon);
+            
+            // Update difficulty level checkboxes
+            Set<Integer> diffLevels = selectedCreature.getDifficultyLevels();
+            for (int i = 0; i < 6; i++) {
+                difficultyCheckBoxes[i].setSelected(diffLevels.contains(i+1));
+            }
+        }
+    }
+    
+    // Helper method to update the creature list model from the creatures list
+    private void refreshCreatureList() {
+        creatureListModel.clear();
+        for (Creature creature : creatures) {
+            creatureListModel.addElement(creature.getName());
+        }
+    }
+    /**
+     * Finds a creature by name in the creatures list.
+     * If no matching creature is found, returns a new default creature.
+     * 
+     * @param name The name of the creature to find
+     * @return The found creature or a new default creature
+     */
+    private Creature findCreatureByName(String name) {
+        // Search in our creatures list
+        for (Creature creature : creatures) {
+            if (creature.getName().equals(name)) {
+                System.out.println("Found existing creature: " + name);
+                return creature;
+            }
+        }
+        
+        // If not found, create a new creature with this name
+        System.out.println("Creating new creature: " + name);
+        Creature newCreature = new Creature(name, (ImageIcon)null, "New creature description");
+        
+        // Set default properties based on predefined types for better usability
+        if (name.equals("Wild Wolf")) {
+            newCreature.setStrengthPenalty(15);
+            newCreature.setWaterPenalty(0);
+            newCreature.setGoldPenalty(2);
+            newCreature.setColor(new Color(100, 100, 100)); // Gray wolf
+        } else if (name.equals("Armed Raider")) {
+            newCreature.setStrengthPenalty(20);
+            newCreature.setWaterPenalty(10);
+            newCreature.setGoldPenalty(25);
+            newCreature.setColor(new Color(50, 0, 0)); // Dark red raider
+        } else if (name.equals("Deer")) {
+            newCreature.setStrengthPenalty(0);
+            newCreature.setWaterPenalty(0);
+            newCreature.setGoldPenalty(0);
+            newCreature.setColor(new Color(133, 95, 61)); // Brown
+        } else {
+            // Default creature with a generic color
+            newCreature.setColor(new Color(200, 100, 100)); // Reddish
+        }
+        
+        // Create icon matching the color
+        ImageIcon icon = ImageUtils.createColoredIcon(newCreature.getColor(), 64, 64);
+        newCreature.setIcon(icon);
+        
+        // Set default difficulty levels (levels 1-3 for most creatures)
+        newCreature.addDifficultyLevel(1);
+        newCreature.addDifficultyLevel(2);
+        newCreature.addDifficultyLevel(3);
+        
+        // For more dangerous creatures, add higher difficulty levels
+        if (name.equals("Armed Raider")) {
+            newCreature.addDifficultyLevel(4);
+            newCreature.addDifficultyLevel(5);
+        }
+        
+        // Add to creatures list
+        creatures.add(newCreature);
+        
+        return newCreature;
+    }
+    
+    /**
+     * Saves the current state of the editor to the selected creature.
+     */
+    private void saveCreature() {
+        String selectedCreatureName = creatureList.getSelectedValue();
+        if (selectedCreatureName == null) {
+            JOptionPane.showMessageDialog(this, "Please select a creature to save.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Find or create the creature
+        Creature creature = findCreatureByName(selectedCreatureName);
+        
+        // Update creature properties from the UI
+        String newName = nameField.getText().trim();
+        if (!newName.isEmpty()) {
+            // Check if name has changed
+            if (!newName.equals(selectedCreatureName)) {
+                // Let the user know the name has changed
+                JOptionPane.showMessageDialog(this, 
+                    "Name changed from '" + selectedCreatureName + "' to '" + newName + "'",
+                    "Name Changed", JOptionPane.INFORMATION_MESSAGE);
+                
+                // Set the new name on the creature
+                creature.setName(newName);
+                
+                // Refresh the creature list to show the updated name
+                refreshCreatureList();
+                
+                // Select the creature with the new name
+                creatureList.setSelectedValue(newName, true);
+            }
+        }
+        
+        // Update penalties based on checkboxes and spinner values
+        int strengthPenalty = strengthPenaltyCheckBox.isSelected() ? (int)strengthPenaltySpinner.getValue() : 0;
+        int waterPenalty = waterPenaltyCheckBox.isSelected() ? (int)waterPenaltySpinner.getValue() : 0;
+        int goldPenalty = goldPenaltyCheckBox.isSelected() ? (int)goldPenaltySpinner.getValue() : 0;
+        
+        // Set the penalties on the creature
+        creature.setStrengthPenalty(strengthPenalty);
+        creature.setWaterPenalty(waterPenalty);
+        creature.setGoldPenalty(goldPenalty);
+        
+        // Set hostility based on whether any penalties exist
+        // A creature is considered hostile if it has any penalties
+        creature.setHostile(strengthPenalty > 0 || waterPenalty > 0 || goldPenalty > 0);
+        
+        // Update item if one is selected
+        String selectedItem = (String)dropsComboBox.getSelectedItem();
+        if (selectedItem != null && !selectedItem.equals("Select Resource")) {
+            // Find the corresponding item
+            for (Item item : availableItems) {
+                if (item.getName().equals(selectedItem)) {
+                    creature.setItem(item);
+                    break;
+                }
+            }
+        } else {
+            creature.setItem(null);
+        }
+        
+        // Update creature color and icon
+        creature.setColor(creatureColor);
+        
+        // Create a new icon with the selected color
+        ImageIcon colorIcon = ImageUtils.createColoredIcon(creatureColor, 64, 64);
+        creature.setIcon(colorIcon);
+        
+        // Update difficulty levels from checkboxes
+        // First clear existing difficulty levels
+        Set<Integer> currentLevels = creature.getDifficultyLevels();
+        Set<Integer> newLevels = new HashSet<>();
+        for (int i = 0; i < 6; i++) {
+            if (difficultyCheckBoxes[i].isSelected()) {
+                newLevels.add(i+1);
+            }
+        }
+        
+        // Replace all levels
+        currentLevels.clear();
+        for (Integer level : newLevels) {
+            creature.addDifficultyLevel(level);
+        }
+        
+        // Save the creature to the file
+        CreatureImportExportUtil.saveCreaturesToFile("all_creatures.txt", creatures, availableItems);
+        
+        // Create difficulty levels string
+        StringBuilder diffLevelsStr = new StringBuilder();
+        String[] levelNames = {"Easy", "Medium", "Hard", "Expert", "Master", "Impossible"};
+        Set<Integer> levels = creature.getDifficultyLevels();
+        
+        for (Integer level : levels) {
+            if (level >= 1 && level <= 6) {
+                if (diffLevelsStr.length() > 0) {
+                    diffLevelsStr.append(", ");
+                }
+                diffLevelsStr.append(levelNames[level-1]);
+            }
+        }
+        
+        // Show success message
+        JOptionPane.showMessageDialog(this, 
+                "Creature saved successfully!\n\n" +
+                "Name: " + creature.getName() + "\n" +
+                "Deadly: " + creature.isHostile() + "\n" +
+                "Strength Penalty: " + creature.getStrengthPenalty() + "\n" +
+                "Water Penalty: " + creature.getWaterPenalty() + "\n" +
+                "Gold Penalty: " + creature.getGoldPenalty() + "\n" +
+                "Color: RGB(" + creatureColor.getRed() + "," + 
+                              creatureColor.getGreen() + "," + 
+                              creatureColor.getBlue() + ")\n" +
+                "Difficulty Levels: " + diffLevelsStr.toString(),
+                "Save Successful", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Restores default values in all editors.
+     */
+    public void restoreDefaults() {
+        // TODO: Implement restore defaults functionality for each section
+    }
+    
+    /**
+     * Extracts the dominant color from an ImageIcon.
+     * This is a helper method for working with creature icons.
+     * 
+     * @param icon The ImageIcon to extract color from
+     * @return The extracted color (center pixel)
+     */
+    private Color getColorFromIcon(ImageIcon icon) {
+        // Get the image and convert to buffered image if necessary
+        java.awt.Image image = icon.getImage();
+        java.awt.image.BufferedImage bufferedImage;
+        
+        if (image instanceof java.awt.image.BufferedImage) {
+            bufferedImage = (java.awt.image.BufferedImage) image;
+        } else {
+            // Create a buffered image from the icon
+            bufferedImage = new java.awt.image.BufferedImage(
+                    icon.getIconWidth(), 
+                    icon.getIconHeight(), 
+                    java.awt.image.BufferedImage.TYPE_INT_ARGB
+            );
+            Graphics g = bufferedImage.createGraphics();
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+        }
+        
+        // Simple approach: get the color of the center pixel
+        int width = bufferedImage.getWidth();
+        int height = bufferedImage.getHeight();
+        
+        if (width > 0 && height > 0) {
+            int rgb = bufferedImage.getRGB(width / 2, height / 2);
+            return new Color(rgb);
+        }
+        
+        // Default to the current creatureColor if we couldn't get a color
+        return creatureColor;
+    }
+    
+    /**
+     * Main method for testing the NPC editor.
+     * 
+     * @param args Command-line arguments.
+     */
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("NPC Editor");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.getContentPane().add(new NPCEditor());
+            frame.setSize(1024, 768);
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
+    }
+}

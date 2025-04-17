@@ -1,0 +1,10 @@
+#Game Item Properties
+#Fri Apr 05 08:24:22 UTC 2025
+id=water-canteen
+name=Water Canteen
+description=A sturdy canteen that can hold fresh water.
+imagePath=resources/images/items/canteen.png
+goldValue=15
+waterValue=20
+foodValue=0
+strengthValue=0

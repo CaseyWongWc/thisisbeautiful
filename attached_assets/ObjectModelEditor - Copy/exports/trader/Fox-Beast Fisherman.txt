@@ -1,0 +1,24 @@
+#Trader: Fox-Beast Fisherman
+#Sat Apr 05 07:47:10 GMT 2025
+aggroDialogue=hey, come back here\! thief\!\!
+aggroMovement=hello
+aggroOnMaxReject=false
+description=test1 hi
+encounterDialogue=Fresh Fish\! on sale now\!
+foodPenalty=0
+imagePath=/home/runner/workspace/resources/images/one.png
+isAggro=false
+leaveTradeDialogue=come again soon\!
+maxAggroDuration=60
+maxOffersBeforeDecline=3
+maxPlayerResourcePercentage=1.0
+minPlayerResourcePercentage=0.0
+name=Fox-Beast Fisherman
+passiveMovement=hello
+positiveDialogue=ha\! hah, you wouldnt find these prices anywhere else\!
+stealSuccessRate=0.5
+strengthPenalty=0
+tradeEventDialogue=This is a special discount\!
+tradeOffers=Mana Potion
+type=Trader
+waterPenalty=0

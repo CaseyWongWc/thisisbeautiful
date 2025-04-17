@@ -1,0 +1,12 @@
+
+name|type|goldValue|foodValue|waterValue|description|isBuiltIn|colorR|colorG|colorB|difficulties|imagePath
+Health Potion|Consumable|25|5|5|A magical potion that restores health and provides minor sustenance.|true|255|0|0|Easy,Medium,Hard|resources/images/items/one.png
+Golden Sword|Weapon|100|0|0|A finely crafted sword with golden embellishments.|true|255|215|0|Medium,Hard|resources/images/items/two.png
+Magic Staff|Weapon|150|0|0|A mystical staff crackling with arcane energy.|true|147|112|219|Hard|resources/images/items/three.png
+Bread Loaf|Food|5|15|0|Fresh baked bread that provides substantial nourishment.|true|139|69|19|Easy,Medium|resources/images/items/four.png
+Waterskin|Water|10|0|20|A leather container filled with fresh water.|true|0|191|255|Easy,Medium,Hard|resources/images/items/five.png
+Shield|Armor|75|0|0|A sturdy shield that provides excellent protection.|true|192|192|192|Medium,Hard|resources/images/items/six.png
+Treasure Map|Special|200|0|0|An ancient map leading to hidden treasures.|true|205|133|63|Hard|resources/images/items/seven.png
+Magic Ring|Accessory|300|0|0|A ring imbued with mysterious powers.|true|148|0|211|Hard|resources/images/items/eight.png
+Apple Pie|Food|15|25|0|A delicious pie that provides excellent sustenance.|true|165|42|42|Easy|resources/images/items/nine.png
+Crystal Ball|Special|250|0|0|A mystical orb used for scrying.|true|176|224|230|Hard|resources/images/items/ten.png

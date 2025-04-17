@@ -1,0 +1,10 @@
+#Item: Magic Sword
+#Sun Apr 06 07:05:27 GMT 2025
+description=A gleaming blade imbued with arcane energies.
+difficulties=Medium,Hard
+foodValue=0
+goldValue=250
+imagePath=/home/runner/workspace/resources/ICONDUMP/weapon.png/icons/000000/transparent/1x1/delapouite/dagger-rose.png
+name=Magic Sword
+type=Item
+waterValue=0

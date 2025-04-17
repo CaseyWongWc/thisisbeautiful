@@ -1,0 +1,353 @@
+package com.wss.swing.model;
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import javax.swing.ImageIcon;
+
+/**
+ * Represents an item in the game world.
+ * Items can be collected, used, and traded by players.
+ */
+public class Item extends GameObject implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
+    // Difficulty levels
+    public static final String[] DIFFICULTY_LEVELS = {
+        "Easy", "Medium", "Hard", "Expert", "Master", "Impossible"
+    };
+    
+    // Properties
+    private String type; // Type of item (food, water, tool, resource, etc.)
+    private int value; // Value in gold or other resources
+    private boolean repeatable; // Whether multiple instances can exist in the world
+    private String description; // Description of the item
+    private int foodValue; // How much food it provides when consumed (if applicable)
+    private int waterValue; // How much water it provides when consumed (if applicable)
+    private Set<String> availableDifficulties; // Difficulties this item appears in
+    
+    /**
+     * Creates a new item with the specified properties.
+     * 
+     * @param name The name of the item.
+     * @param iconPath The path to the icon for this item.
+     * @param type The type of item.
+     * @param value The value of the item.
+     * @param repeatable Whether multiple instances can exist.
+     * @param description The description of this item.
+     * @param foodValue The food value of this item.
+     * @param waterValue The water value of this item.
+     * @param isBuiltIn Whether this is a built-in item.
+     */
+    public Item(String name, String iconPath, String type, int value, boolean repeatable, 
+              String description, int foodValue, int waterValue, boolean isBuiltIn) {
+        super(name, iconPath, isBuiltIn);
+        this.type = type;
+        this.value = value;
+        this.repeatable = repeatable;
+        this.description = description;
+        this.foodValue = foodValue;
+        this.waterValue = waterValue;
+        this.availableDifficulties = new HashSet<>(Arrays.asList("Easy", "Medium", "Hard", "Expert", "Master", "Impossible"));
+    }
+    
+    /**
+     * Creates a new item with the specified properties.
+     * 
+     * @param name The name of the item.
+     * @param icon The icon for this item.
+     * @param type The type of item.
+     * @param value The value of the item.
+     * @param repeatable Whether multiple instances can exist.
+     * @param description The description of this item.
+     * @param foodValue The food value of this item.
+     * @param waterValue The water value of this item.
+     * @param isBuiltIn Whether this is a built-in item.
+     */
+    public Item(String name, ImageIcon icon, String type, int value, boolean repeatable, 
+              String description, int foodValue, int waterValue, boolean isBuiltIn) {
+        super(name, icon, isBuiltIn);
+        this.type = type;
+        this.value = value;
+        this.repeatable = repeatable;
+        this.description = description;
+        this.foodValue = foodValue;
+        this.waterValue = waterValue;
+        this.availableDifficulties = new HashSet<>(Arrays.asList("Easy", "Medium", "Hard", "Expert", "Master", "Impossible"));
+    }
+    
+    /**
+     * Creates a new item with simplified properties.
+     * 
+     * @param name The name of the item.
+     * @param icon The icon for this item.
+     * @param description The description of this item.
+     * @param foodValue The food value of this item.
+     * @param waterValue The water value of this item.
+     * @param goldValue The gold value of this item (value).
+     */
+    public Item(String name, ImageIcon icon, String description, int foodValue, int waterValue, int goldValue) {
+        super(name, icon, false);
+        
+        // Determine type based on highest value
+        if (foodValue >= waterValue && foodValue >= goldValue) {
+            this.type = "Food";
+        } else if (waterValue >= foodValue && waterValue >= goldValue) {
+            this.type = "Water";
+        } else {
+            this.type = "Treasure";
+        }
+        
+        this.value = goldValue;
+        this.repeatable = true;
+        this.description = description;
+        this.foodValue = foodValue;
+        this.waterValue = waterValue;
+        this.availableDifficulties = new HashSet<>(Arrays.asList("Easy", "Medium", "Hard", "Expert", "Master", "Impossible"));
+    }
+    
+    /**
+     * Creates a new item with minimal properties.
+     * 
+     * @param name The name of the item.
+     * @param icon The icon for this item.
+     */
+    public Item(String name, ImageIcon icon) {
+        super(name, icon, false);
+        this.type = "Generic";
+        this.value = 0;
+        this.repeatable = true;
+        this.description = "";
+        this.foodValue = 0;
+        this.waterValue = 0;
+        this.availableDifficulties = new HashSet<>(Arrays.asList("Easy", "Medium", "Hard", "Expert", "Master", "Impossible"));
+    }
+    
+    /**
+     * Gets the gold value of this item (same as getValue()).
+     * 
+     * @return The gold value.
+     */
+    public int getGoldValue() {
+        return value;
+    }
+    
+    /**
+     * Sets the gold value of this item (same as setValue()).
+     * 
+     * @param goldValue The new gold value.
+     */
+    public void setGoldValue(int goldValue) {
+        this.value = goldValue;
+    }
+    
+    /**
+     * Gets the type of this item.
+     * 
+     * @return The type.
+     */
+    public String getType() {
+        return type;
+    }
+    
+    /**
+     * Sets the type of this item.
+     * 
+     * @param type The new type.
+     */
+    public void setType(String type) {
+        this.type = type;
+    }
+    
+    /**
+     * Gets the value of this item.
+     * 
+     * @return The value.
+     */
+    public int getValue() {
+        return value;
+    }
+    
+    /**
+     * Sets the value of this item.
+     * 
+     * @param value The new value.
+     */
+    public void setValue(int value) {
+        this.value = value;
+    }
+    
+    /**
+     * Checks if this item is repeatable.
+     * 
+     * @return True if repeatable, false otherwise.
+     */
+    public boolean isRepeatable() {
+        return repeatable;
+    }
+    
+    /**
+     * Sets whether this item is repeatable.
+     * 
+     * @param repeatable True if repeatable, false otherwise.
+     */
+    public void setRepeatable(boolean repeatable) {
+        this.repeatable = repeatable;
+    }
+    
+    /**
+     * Gets the description of this item.
+     * 
+     * @return The description.
+     */
+    public String getDescription() {
+        return description;
+    }
+    
+    /**
+     * Sets the description of this item.
+     * 
+     * @param description The new description.
+     */
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    
+    /**
+     * Gets the food value of this item.
+     * 
+     * @return The food value.
+     */
+    public int getFoodValue() {
+        return foodValue;
+    }
+    
+    /**
+     * Sets the food value of this item.
+     * 
+     * @param foodValue The new food value.
+     */
+    public void setFoodValue(int foodValue) {
+        this.foodValue = foodValue;
+    }
+    
+    /**
+     * Gets the water value of this item.
+     * 
+     * @return The water value.
+     */
+    public int getWaterValue() {
+        return waterValue;
+    }
+    
+    /**
+     * Sets the water value of this item.
+     * 
+     * @param waterValue The new water value.
+     */
+    public void setWaterValue(int waterValue) {
+        this.waterValue = waterValue;
+    }
+    
+    /**
+     * Gets the difficulties this item appears in.
+     * 
+     * @return The set of difficulty levels.
+     */
+    public Set<String> getAvailableDifficulties() {
+        if (availableDifficulties == null) {
+            availableDifficulties = new HashSet<>();
+            // By default, add all difficulties
+            availableDifficulties.addAll(Arrays.asList(DIFFICULTY_LEVELS));
+        }
+        return availableDifficulties;
+    }
+    
+    /**
+     * Sets the difficulties this item appears in.
+     * 
+     * @param availableDifficulties The new set of difficulty levels.
+     */
+    public void setAvailableDifficulties(Set<String> availableDifficulties) {
+        this.availableDifficulties = availableDifficulties;
+    }
+    
+    /**
+     * Checks if this item is available on the specified difficulty level.
+     * 
+     * @param difficulty The difficulty level to check.
+     * @return True if the item is available on this difficulty, false otherwise.
+     */
+    public boolean isAvailableOnDifficulty(String difficulty) {
+        return getAvailableDifficulties().contains(difficulty);
+    }
+    
+    /**
+     * Sets whether this item is available on the specified difficulty level.
+     * 
+     * @param difficulty The difficulty level to set.
+     * @param available True to make the item available on this difficulty, false otherwise.
+     */
+    public void setAvailableOnDifficulty(String difficulty, boolean available) {
+        if (available) {
+            getAvailableDifficulties().add(difficulty);
+        } else {
+            getAvailableDifficulties().remove(difficulty);
+        }
+    }
+    
+    /**
+     * Checks if this item is available on Easy difficulty.
+     * 
+     * @return True if available on Easy difficulty, false otherwise.
+     */
+    public boolean isEasyDifficulty() {
+        return isAvailableOnDifficulty("Easy");
+    }
+    
+    /**
+     * Checks if this item is available on Medium difficulty.
+     * 
+     * @return True if available on Medium difficulty, false otherwise.
+     */
+    public boolean isMediumDifficulty() {
+        return isAvailableOnDifficulty("Medium");
+    }
+    
+    /**
+     * Checks if this item is available on Hard difficulty.
+     * 
+     * @return True if available on Hard difficulty, false otherwise.
+     */
+    public boolean isHardDifficulty() {
+        return isAvailableOnDifficulty("Hard");
+    }
+    
+    /**
+     * Checks if this item is available on Expert difficulty.
+     * 
+     * @return True if available on Expert difficulty, false otherwise.
+     */
+    public boolean isExpertDifficulty() {
+        return isAvailableOnDifficulty("Expert");
+    }
+    
+    /**
+     * Checks if this item is available on Master difficulty.
+     * 
+     * @return True if available on Master difficulty, false otherwise.
+     */
+    public boolean isMasterDifficulty() {
+        return isAvailableOnDifficulty("Master");
+    }
+    
+    /**
+     * Checks if this item is available on Impossible difficulty.
+     * 
+     * @return True if available on Impossible difficulty, false otherwise.
+     */
+    public boolean isImpossibleDifficulty() {
+        return isAvailableOnDifficulty("Impossible");
+    }
+}

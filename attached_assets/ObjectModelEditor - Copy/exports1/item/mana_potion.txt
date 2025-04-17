@@ -1,0 +1,11 @@
+
+#Item: Mana Potion
+#Fri Apr 04 23:50:00 GMT 2025
+type=Item
+name=Mana Potion
+description=A mystical blue potion that restores magical energy.
+imagePath=resources/images/items/three.png
+foodValue=0
+goldValue=75
+waterValue=10
+difficulties=Easy,Medium,Hard

@@ -1,0 +1,12 @@
+#Spawner: hellothere
+#Sat Apr 05 21:35:02 GMT 2025
+description=
+direction=SE
+imagePath=
+isDirected=false
+maxSpawnCap=1
+name=hellothere
+objectTemplate=
+objectType=item
+randomOrientation=false
+spawnFrequency=2

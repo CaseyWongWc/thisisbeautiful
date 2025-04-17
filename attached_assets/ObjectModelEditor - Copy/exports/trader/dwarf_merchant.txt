@@ -1,0 +1,21 @@
+#
+#Tue Apr 6 00:42:00 UTC 2025
+name=Dwarf Merchant
+description=A stout dwarf merchant offering rare items for a fair price.
+iconPath=./resources/ICONDUMP/craftpix-net-783227-free-dwarf-avatars-64x64-pixel-icon-pack/PNG/Transperent/Icon1.png
+encounterDialogue=Greetings traveler! Care to see my wares?
+tradeEventDialogue=These are the finest goods this side of the mountain!
+positiveDialogue=A pleasure doing business with you!
+leaveTradeDialogue=Safe travels, friend. Return when your coin purse is heavier!
+aggroDialogue=You'll regret trying to cheat a dwarf!
+maxOffersBeforeDecline=3
+isAggro=false
+aggroOnMaxReject=true
+maxAggroDuration=5
+stealSuccessRate=0.2
+minPlayerResourcePercentage=0.5
+maxPlayerResourcePercentage=0.8
+strengthPenalty=2
+waterPenalty=1
+foodPenalty=1
+tradeOffers=magic_sword,water_canteen,healing_potion,bread_ration

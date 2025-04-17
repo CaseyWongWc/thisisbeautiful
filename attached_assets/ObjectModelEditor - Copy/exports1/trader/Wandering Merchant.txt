@@ -1,0 +1,22 @@
+#Trader: Wandering Merchant
+#Sat Apr 05 09:39:57 GMT 2025
+aggroDialogue=You dare try to cheat me? You'll regret that decision\!
+aggroOnMaxReject=true
+description=A mysterious trader who travels the wasteland offering rare goods.
+encounterDialogue=Greetings, traveler\! Care to peruse my wares? I have items you won't find anywhere else.
+foodPenalty=10
+imagePath=resources/images/traders/merchant.png
+isAggro=false
+leaveTradeDialogue=Safe travels, friend. Perhaps our paths will cross again.
+maxAggroDuration=60
+maxOffersBeforeDecline=3
+maxPlayerResourcePercentage=1.0
+minPlayerResourcePercentage=0.0
+name=Wandering Merchant
+positiveDialogue=A fine choice\! May it serve you well on your journey.
+stealSuccessRate=0.25
+strengthPenalty=15
+tradeEventDialogue=Here's what I have to offer today. Gold speaks louder than words, friend.
+tradeOffers=Water Flask,Dried Meat,Health Potion
+type=Trader
+waterPenalty=10

@@ -1,0 +1,9 @@
+#Movement Pattern: Chase
+#Tue Apr 6 00:49:00 UTC 2025
+name=Chase
+description=A chase movement pattern that follows the player when aggressive
+repeating=true
+random=true
+reversible=true
+moveInterval=1
+directions=north,northeast,east,southeast,south,southwest,west,northwest

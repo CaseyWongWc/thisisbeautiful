@@ -1,0 +1,10 @@
+#Game Item Properties
+#Fri Apr 05 08:24:22 UTC 2025
+id=strength-potion
+name=Strength Potion
+description=Temporarily increases your strength.
+imagePath=resources/images/items/potion.png
+goldValue=25
+waterValue=0
+foodValue=0
+strengthValue=10

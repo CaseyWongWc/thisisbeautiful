@@ -1,0 +1,8 @@
+#Movement: ZigZag Pattern
+#Mon Apr 05 00:00:00 UTC 2025
+name=ZigZag Pattern
+directions=UP\nRIGHT\nUP\nRIGHT\nDOWN\nRIGHT\nDOWN\nRIGHT
+repeating=true
+random=false
+reversible=true
+moveInterval=1

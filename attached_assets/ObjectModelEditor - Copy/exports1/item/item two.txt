@@ -1,0 +1,10 @@
+#Item: item two
+#Sat Apr 05 02:24:45 GMT 2025
+description=my name is item 2 hello\!
+difficulties=Easy,Expert,Master,Normal,Hard,Legend
+foodValue=10
+goldValue=40
+imagePath=resources/images/item/fbf61a8b-bf69-412a-a5a8-e121bd51ff3b.png
+name=item two
+type=Item
+waterValue=30

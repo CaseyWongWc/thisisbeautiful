@@ -1,0 +1,15 @@
+#Trader: Dwarf Merchant
+#Sun Apr 06 00:48:42 GMT 2025
+aggroDialogue=You'll regret trying to cheat a dwarf\!
+aggroMovement=
+aggroOnMaxReject=true
+description=A stout dwarf merchant offering rare items for a fair price.
+encounterDialogue=Greetings traveler\! Care to see my wares?
+imagePath=/home/runner/workspace/resources/ICONDUMP/craftpix-net-783227-free-dwarf-avatars-64x64-pixel-icon-pack/PNG/Transperent/Icon1.png
+isAggro=false
+leaveTradeDialogue=Safe travels, friend. Return when your coin purse is heavier\!
+maxOffersBeforeDecline=3
+name=Dwarf Merchant
+passiveMovement=
+positiveDialogue=A pleasure doing business with you\!
+tradeEventDialogue=These are the finest goods this side of the mountain\!

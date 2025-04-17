@@ -1,0 +1,10 @@
+#Terrain: City
+#Sun Apr 06 07:13:55 GMT 2025
+description=hi
+goldCost=0
+hungerCost=0
+imagePath=/home/runner/workspace/resources/ICONDUMP/civilization.png/icons/000000/ffffff/1x1/delapouite/modern-city.png
+movementCost=0
+name=City
+strengthCost=0
+thirstCost=0

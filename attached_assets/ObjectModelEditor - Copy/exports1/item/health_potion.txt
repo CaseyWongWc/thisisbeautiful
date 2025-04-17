@@ -1,0 +1,12 @@
+# Item Properties
+name=Health Potion
+description=A magical elixir that instantly restores health.
+type=Item
+value=35
+weight=0.5
+stackCount=1
+imagePath=resources/images/items/health_potion.png
+usable=true
+consumable=true
+healthRestore=40
+isWeapon=false

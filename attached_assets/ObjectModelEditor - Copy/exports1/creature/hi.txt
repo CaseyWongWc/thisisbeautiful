@@ -1,0 +1,9 @@
+#Creature: hi
+#Sat Apr 05 04:44:16 GMT 2025
+description=Description of new creature
+difficulties=
+goldPenalty=0
+imagePath=
+name=hi
+strengthPenalty=0
+waterPenalty=0

@@ -1,0 +1,8 @@
+#Item: Gold Ring
+#Wed Apr 03 21:45:32 UTC 2024
+name=Gold Ring
+description=A beautiful gold ring that can be traded for gold.
+imagePath=resources/ring.png
+foodValue=0
+waterValue=0
+goldValue=100

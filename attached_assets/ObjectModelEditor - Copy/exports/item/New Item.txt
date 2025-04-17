@@ -1,0 +1,6 @@
+#Item: New Item
+#Sun Apr 06 11:41:24 GMT 2025
+description=
+imagePath=
+name=New Item
+type=Item

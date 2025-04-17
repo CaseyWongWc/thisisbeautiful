@@ -1,0 +1,12 @@
+#Game Trader Properties
+#Fri Apr 05 08:21:22 UTC 2025
+id=wandering-merchant
+name=Wandering Merchant
+description=A mysterious trader who wanders the wasteland.
+imagePath=resources/images/traders/wandering_merchant.svg
+encounterDialogue=Greetings, traveler! I have many rare items for sale.
+positiveDialogue=A fine choice! May it serve you well.
+negativeDialogue=Perhaps you'll find something more to your liking next time.
+goldValue=100
+strengthValue=0
+tradeOffers=water-canteen,dried-rations,strength-potion

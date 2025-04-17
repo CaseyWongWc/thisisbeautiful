@@ -1,0 +1,11 @@
+
+#Item: Ancient Relic
+#Fri Apr 04 23:50:00 GMT 2025
+description=A mysterious artifact from a long-lost civilization.
+foodValue=0
+goldValue=1000
+imagePath=resources/images/items/seven.png
+name=Ancient Relic
+type=Item
+waterValue=0
+difficulties=Hard

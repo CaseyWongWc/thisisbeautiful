@@ -1,0 +1,9 @@
+#Movement Pattern: Patrol
+#Sun Apr 06 00:49:22 GMT 2025
+description=A basic patrol movement pattern that walks around an area
+directions=N,E,S,W
+moveInterval=2
+name=Patrol
+random=false
+repeating=true
+reversible=false

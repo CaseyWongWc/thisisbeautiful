@@ -1,0 +1,1130 @@
+package com.wss.swing.editor;
+
+import com.wss.swing.model.MovementPattern;
+import com.wss.swing.util.ImageUtils;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Editor for NPC movement patterns using directional instructions.
+ * Provides a visual grid representation and step-by-step visualization.
+ */
+public class MovementPatternEditorNew extends JPanel {
+    
+    // Direction constants for the movement patterns
+    private static final String[] DIRECTION_KEYS = {
+        "U", "UL", "L", "DL", "D", "DS", "S", "US", "W"
+    };
+    
+    private static final String[] DIRECTION_NAMES = {
+        "North (U)", "North-East (UL)", "East (L)", "South-East (DL)", 
+        "South (D)", "South-West (DS)", "West (S)", "North-West (US)", "Wait (W)"
+    };
+    
+    // List of movement patterns and the currently selected pattern
+    private List<MovementPattern> patterns;
+    private MovementPattern selectedPattern;
+    
+    // UI Components
+    private JTable patternTable;
+    private DefaultTableModel patternTableModel;
+    private JTextField nameField;
+    private JComboBox<String> typeComboBox;
+    private JCheckBox repeatingCheckBox;
+    private JCheckBox reversibleCheckBox;
+    private JCheckBox wrapAroundCheckBox;
+    private JCheckBox randomCheckBox;
+    private JTextArea sequenceTextArea;
+    
+    // Pattern Demo Components
+    private MovementPatternVisualizer visualizer;
+    private JPanel visualizerPanel;
+    private JButton playButton;
+    private JButton stepForwardButton;
+    private JButton stepBackButton;
+    private JButton resetButton;
+    
+    // Buttons
+    private JButton addButton;
+    private JButton updateButton;
+    private JButton deleteButton;
+    private JButton clearButton;
+    private JButton restoreDefaultsButton;
+    private JButton importButton;
+    private JButton exportButton;
+    
+    /**
+     * Creates a new movement pattern editor panel.
+     */
+    public MovementPatternEditorNew() {
+        patterns = new ArrayList<>();
+        
+        setLayout(new BorderLayout(10, 10));
+        setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        // Create the split pane for table and form
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        splitPane.setResizeWeight(0.4); // 40% left, 60% right
+        
+        // Create table panel
+        JPanel tablePanel = createTablePanel();
+        
+        // Create form panel
+        JPanel formPanel = createFormPanel();
+        
+        // Add panels to split pane
+        splitPane.setLeftComponent(tablePanel);
+        splitPane.setRightComponent(formPanel);
+        
+        // Add split pane to the main panel
+        add(splitPane, BorderLayout.CENTER);
+        
+        // Initialize with default values
+        clearForm();
+        
+        // Add default patterns
+        createDefaultPatterns();
+    }
+    
+    /**
+     * Creates the pattern table panel.
+     * 
+     * @return The pattern table panel.
+     */
+    private JPanel createTablePanel() {
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        panel.setBorder(BorderFactory.createTitledBorder("Available Movement Patterns"));
+        
+        // Create the table model
+        String[] columnNames = {"Name", "Type", "Repeating", "Random"};
+        patternTableModel = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Make all cells non-editable
+            }
+            
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                switch (columnIndex) {
+                    case 0: // Name
+                    case 1: // Type
+                        return String.class;
+                    case 2: // Repeating
+                    case 3: // Random
+                        return Boolean.class;
+                    default:
+                        return String.class;
+                }
+            }
+        };
+        
+        // Create the table
+        patternTable = new JTable(patternTableModel);
+        patternTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        patternTable.setRowHeight(25);
+        
+        // Set column widths
+        patternTable.getColumnModel().getColumn(0).setPreferredWidth(150); // Name
+        patternTable.getColumnModel().getColumn(1).setPreferredWidth(100); // Type
+        patternTable.getColumnModel().getColumn(2).setPreferredWidth(80);  // Repeating
+        patternTable.getColumnModel().getColumn(3).setPreferredWidth(80);  // Random
+        
+        // Add selection listener
+        patternTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int selectedRow = patternTable.getSelectedRow();
+                if (selectedRow >= 0 && selectedRow < patterns.size()) {
+                    selectPattern(patterns.get(selectedRow));
+                }
+            }
+        });
+        
+        // Create scroll pane
+        JScrollPane scrollPane = new JScrollPane(patternTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Add import/export buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        importButton = new JButton("Import");
+        exportButton = new JButton("Export");
+        
+        importButton.addActionListener(e -> importPattern());
+        exportButton.addActionListener(e -> exportPattern());
+        
+        buttonPanel.add(importButton);
+        buttonPanel.add(exportButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the pattern form panel.
+     * 
+     * @return The pattern form panel.
+     */
+    private JPanel createFormPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Movement Pattern Properties"));
+        
+        // Create tabbed pane for properties, sequence, and visualization
+        JTabbedPane tabbedPane = new JTabbedPane();
+        
+        // Create basic properties panel
+        tabbedPane.addTab("Basic Properties", createBasicPropertiesPanel());
+        
+        // Create movement sequence panel
+        tabbedPane.addTab("Movement Sequence", createMovementSequencePanel());
+        
+        // Create visualization panel
+        tabbedPane.addTab("Visual Demo", createVisualizationPanel());
+        
+        panel.add(tabbedPane, BorderLayout.CENTER);
+        
+        // Add form buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        
+        addButton = new JButton("Add");
+        updateButton = new JButton("Update");
+        deleteButton = new JButton("Delete");
+        clearButton = new JButton("Clear");
+        restoreDefaultsButton = new JButton("Restore Defaults");
+        
+        addButton.addActionListener(e -> addPattern());
+        updateButton.addActionListener(e -> updatePattern());
+        deleteButton.addActionListener(e -> deletePattern());
+        clearButton.addActionListener(e -> clearForm());
+        restoreDefaultsButton.addActionListener(e -> restoreDefaults());
+        
+        buttonPanel.add(addButton);
+        buttonPanel.add(updateButton);
+        buttonPanel.add(deleteButton);
+        buttonPanel.add(clearButton);
+        buttonPanel.add(restoreDefaultsButton);
+        
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the basic properties panel.
+     * 
+     * @return The basic properties panel.
+     */
+    private JPanel createBasicPropertiesPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Name field
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Name:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        nameField = new JTextField(20);
+        panel.add(nameField, gbc);
+        
+        // Type selector
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        panel.add(new JLabel("Type:"), gbc);
+        
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        String[] patternTypes = {
+            MovementPattern.TYPE_CUSTOM,
+            MovementPattern.TYPE_LINEAR,
+            MovementPattern.TYPE_RANDOM,
+            MovementPattern.TYPE_STATIONARY,
+            MovementPattern.TYPE_PATROL
+        };
+        typeComboBox = new JComboBox<>(patternTypes);
+        typeComboBox.addActionListener(e -> {
+            String selectedType = (String) typeComboBox.getSelectedItem();
+            if (selectedType != null && selectedType.equals(MovementPattern.TYPE_RANDOM)) {
+                randomCheckBox.setSelected(true);
+            }
+        });
+        panel.add(typeComboBox, gbc);
+        
+        // Checkboxes
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        JPanel checkboxPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+        
+        repeatingCheckBox = new JCheckBox("Repeating Pattern");
+        repeatingCheckBox.setToolTipText("Whether this pattern repeats after reaching the end");
+        
+        reversibleCheckBox = new JCheckBox("Reversible Pattern");
+        reversibleCheckBox.setToolTipText("Whether this pattern can reverse direction when hitting an obstacle");
+        
+        wrapAroundCheckBox = new JCheckBox("Wrap Around (Asteroids-style)");
+        wrapAroundCheckBox.setToolTipText("Whether NPCs wrap around the map edges like in the game Asteroids");
+        
+        randomCheckBox = new JCheckBox("Random Selection");
+        randomCheckBox.setToolTipText("Whether directions are selected randomly instead of sequentially");
+        randomCheckBox.addActionListener(e -> {
+            if (randomCheckBox.isSelected()) {
+                typeComboBox.setSelectedItem(MovementPattern.TYPE_RANDOM);
+                if (visualizer != null) {
+                    visualizer.setVisible(!randomCheckBox.isSelected());
+                }
+            }
+        });
+        
+        checkboxPanel.add(repeatingCheckBox);
+        checkboxPanel.add(reversibleCheckBox);
+        checkboxPanel.add(wrapAroundCheckBox);
+        checkboxPanel.add(randomCheckBox);
+        
+        panel.add(checkboxPanel, gbc);
+        
+        // Direction Key Reference
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weighty = 1.0;
+        
+        JPanel referencePanel = new JPanel(new BorderLayout());
+        referencePanel.setBorder(BorderFactory.createTitledBorder("Direction Key Reference"));
+        
+        JPanel directionGrid = createDirectionGridPanel();
+        referencePanel.add(directionGrid, BorderLayout.CENTER);
+        
+        panel.add(referencePanel, gbc);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates a panel showing the direction grid reference.
+     * 
+     * @return The direction grid panel.
+     */
+    private JPanel createDirectionGridPanel() {
+        JPanel panel = new JPanel(new GridLayout(3, 3, 2, 2));
+        panel.setPreferredSize(new Dimension(300, 200));
+        
+        // Create the 3x3 direction grid with direction keys
+        String[][] grid = {
+            {"NorthWest\nUW", "North\nU", "NorthEast\nUL"},
+            {"West\nW", "Wait\n[empty]", "East\nL"},
+            {"SouthWest\nDW", "South\nS", "SouthEast\nDS"}
+        };
+        
+        // Add each cell with the direction
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                JLabel label = new JLabel("<html>" + grid[row][col].replace("\n", "<br>") + "</html>");
+                label.setHorizontalAlignment(JLabel.CENTER);
+                label.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
+                panel.add(label);
+            }
+        }
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the movement sequence panel.
+     * 
+     * @return The movement sequence panel.
+     */
+    private JPanel createMovementSequencePanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        // Add instructions
+        JLabel instructionsLabel = new JLabel(
+            "<html><p>Enter movement directions using the following keys:</p>" +
+            "<p>U (Up/North), D (Down/South), L (Left/East), S (South/West),</p>" +
+            "<p>UL (Up-Left/Northeast), DL (Down-Left/Southeast),</p>" +
+            "<p>US (Up-South/Northwest), DS (Down-South/Southwest), W (Wait/No Movement)</p>" +
+            "<p>Each line represents a single movement instruction.</p>" +
+            "<p>Empty lines indicate the NPC stays in place.</p></html>"
+        );
+        panel.add(instructionsLabel, BorderLayout.NORTH);
+        
+        // Create sequence text area
+        sequenceTextArea = new JTextArea(10, 30);
+        sequenceTextArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        JScrollPane sequenceScrollPane = new JScrollPane(sequenceTextArea);
+        sequenceScrollPane.setBorder(BorderFactory.createTitledBorder("Movement Sequence"));
+        panel.add(sequenceScrollPane, BorderLayout.CENTER);
+        
+        // Create button panel for quick insertion
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        buttonPanel.setBorder(BorderFactory.createTitledBorder("Quick Insert"));
+        
+        // Add a button for each direction
+        for (int i = 0; i < DIRECTION_KEYS.length; i++) {
+            final String direction = DIRECTION_KEYS[i];
+            final String name = DIRECTION_NAMES[i];
+            
+            JButton dirButton = new JButton(direction);
+            dirButton.setToolTipText(name);
+            dirButton.addActionListener(e -> {
+                sequenceTextArea.insert(direction + "\n", sequenceTextArea.getCaretPosition());
+            });
+            buttonPanel.add(dirButton);
+        }
+        
+        // Add buttons for common patterns
+        JButton zigzagButton = new JButton("Zigzag");
+        zigzagButton.setToolTipText("Insert a zigzag pattern");
+        zigzagButton.addActionListener(e -> {
+            sequenceTextArea.setText("L\nUL\nL\nDL\nL\nUL\nL\nDL");
+        });
+        
+        JButton diagonalButton = new JButton("Diagonal");
+        diagonalButton.setToolTipText("Insert a diagonal pattern");
+        diagonalButton.addActionListener(e -> {
+            sequenceTextArea.setText("UL\nUL\nUL\nUL\nUL");
+        });
+        
+        JButton circleButton = new JButton("Circle");
+        circleButton.setToolTipText("Insert a circular pattern");
+        circleButton.addActionListener(e -> {
+            sequenceTextArea.setText("U\nUL\nL\nDL\nD\nDS\nS\nUS");
+        });
+        
+        buttonPanel.add(new JSeparator(JSeparator.VERTICAL));
+        buttonPanel.add(zigzagButton);
+        buttonPanel.add(diagonalButton);
+        buttonPanel.add(circleButton);
+        
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates the visualization panel.
+     * 
+     * @return The visualization panel.
+     */
+    private JPanel createVisualizationPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        // Create the visualizer
+        visualizerPanel = new JPanel(new BorderLayout());
+        visualizerPanel.setBorder(BorderFactory.createTitledBorder("Pattern Visualization"));
+        
+        visualizer = new MovementPatternVisualizer();
+        visualizerPanel.add(visualizer, BorderLayout.CENTER);
+        
+        // Create controls for the visualizer
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+        controlPanel.setBorder(BorderFactory.createTitledBorder("Animation Controls"));
+        
+        stepBackButton = new JButton("< Step Back");
+        stepBackButton.addActionListener(e -> visualizer.stepBack());
+        
+        playButton = new JButton("Play");
+        playButton.addActionListener(e -> visualizer.toggleAnimation());
+        
+        stepForwardButton = new JButton("Step Forward >");
+        stepForwardButton.addActionListener(e -> visualizer.stepForward());
+        
+        resetButton = new JButton("Reset");
+        resetButton.addActionListener(e -> visualizer.reset());
+        
+        controlPanel.add(stepBackButton);
+        controlPanel.add(playButton);
+        controlPanel.add(stepForwardButton);
+        controlPanel.add(resetButton);
+        
+        // Add explanation
+        JPanel explanationPanel = new JPanel();
+        explanationPanel.setBorder(BorderFactory.createTitledBorder("Note"));
+        
+        JLabel explanationLabel = new JLabel(
+            "<html><p>Random patterns cannot be visualized.</p>" +
+            "<p>The grid automatically resizes to fit the pattern.</p>" +
+            "<p>Red cells show the NPC position at each step.</p>" +
+            "<p>Numbers indicate the step sequence.</p></html>"
+        );
+        explanationPanel.add(explanationLabel);
+        
+        // Add components to the panel
+        panel.add(visualizerPanel, BorderLayout.CENTER);
+        panel.add(controlPanel, BorderLayout.SOUTH);
+        panel.add(explanationPanel, BorderLayout.NORTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates default movement patterns.
+     */
+    private void createDefaultPatterns() {
+        patterns.clear();
+        
+        // Add stationary pattern
+        MovementPattern stationary = MovementPattern.getStationaryPattern();
+        patterns.add(stationary);
+        
+        // Add linear pattern
+        MovementPattern linear = MovementPattern.getLinearPattern();
+        patterns.add(linear);
+        
+        // Add random pattern
+        MovementPattern random = MovementPattern.getRandomPattern();
+        patterns.add(random);
+        
+        // Add zigzag pattern
+        MovementPattern zigzag = new MovementPattern("Zigzag", 1, true);
+        zigzag.setPatternType(MovementPattern.TYPE_CUSTOM);
+        List<String> zigzagDirections = new ArrayList<>();
+        zigzagDirections.add("L");
+        zigzagDirections.add("UL");
+        zigzagDirections.add("L");
+        zigzagDirections.add("DL");
+        zigzag.setMovementInstructions(zigzagDirections);
+        patterns.add(zigzag);
+        
+        // Add diagonal pattern
+        MovementPattern diagonal = new MovementPattern("Diagonal", 1, true);
+        diagonal.setPatternType(MovementPattern.TYPE_CUSTOM);
+        List<String> diagonalDirections = new ArrayList<>();
+        diagonalDirections.add("UL");
+        diagonalDirections.add("UL");
+        diagonalDirections.add("UL");
+        diagonalDirections.add("UL");
+        diagonal.setMovementInstructions(diagonalDirections);
+        patterns.add(diagonal);
+        
+        // Update the table
+        updatePatternTable();
+        
+        // Select the first pattern
+        if (!patterns.isEmpty()) {
+            selectPattern(patterns.get(0));
+        }
+    }
+    
+    /**
+     * Updates the pattern table with the current patterns.
+     */
+    private void updatePatternTable() {
+        patternTableModel.setRowCount(0);
+        for (MovementPattern pattern : patterns) {
+            patternTableModel.addRow(new Object[]{
+                pattern.getName(),
+                pattern.getPatternType(),
+                pattern.isRepeating(),
+                pattern.isRandom()
+            });
+        }
+    }
+    
+    /**
+     * Selects a pattern and updates the form with its properties.
+     * 
+     * @param pattern The pattern to select.
+     */
+    private void selectPattern(MovementPattern pattern) {
+        this.selectedPattern = pattern;
+        
+        if (pattern == null) {
+            clearForm();
+            return;
+        }
+        
+        // Update form fields with pattern properties
+        nameField.setText(pattern.getName());
+        typeComboBox.setSelectedItem(pattern.getPatternType());
+        repeatingCheckBox.setSelected(pattern.isRepeating());
+        reversibleCheckBox.setSelected(pattern.isReversible());
+        wrapAroundCheckBox.setSelected(pattern.isWrapAround());
+        randomCheckBox.setSelected(pattern.isRandom());
+        
+        // Update sequence text area
+        StringBuilder sequence = new StringBuilder();
+        for (String instruction : pattern.getMovementInstructions()) {
+            sequence.append(instruction).append("\n");
+        }
+        sequenceTextArea.setText(sequence.toString());
+        
+        // Update visualizer
+        if (visualizer != null) {
+            visualizer.setPattern(pattern);
+            visualizer.setVisible(!pattern.isRandom());
+        }
+        
+        // Enable/disable controls based on pattern type
+        boolean isRandom = pattern.isRandom();
+        if (visualizer != null) {
+            visualizer.setVisible(!isRandom);
+            playButton.setEnabled(!isRandom);
+            stepForwardButton.setEnabled(!isRandom);
+            stepBackButton.setEnabled(!isRandom);
+            resetButton.setEnabled(!isRandom);
+        }
+    }
+    
+    /**
+     * Adds a new pattern.
+     */
+    private void addPattern() {
+        // Validate input
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter a name for the pattern.",
+                "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Create new pattern
+        MovementPattern pattern = new MovementPattern(
+            (String) typeComboBox.getSelectedItem(),
+            1,  // speed
+            reversibleCheckBox.isSelected()
+        );
+        
+        // Set properties
+        pattern.setName(name);
+        pattern.setRepeating(repeatingCheckBox.isSelected());
+        pattern.setWrapAround(wrapAroundCheckBox.isSelected());
+        pattern.setRandom(randomCheckBox.isSelected());
+        
+        // Process movement sequence
+        List<String> instructions = new ArrayList<>();
+        String[] lines = sequenceTextArea.getText().split("\n");
+        for (String line : lines) {
+            String instruction = line.trim();
+            if (!instruction.isEmpty()) {
+                instructions.add(instruction);
+            } else {
+                // Empty line means "stay in place" (Wait)
+                instructions.add("W");
+            }
+        }
+        pattern.setMovementInstructions(instructions);
+        
+        // Add to list
+        patterns.add(pattern);
+        updatePatternTable();
+        
+        // Select the new pattern
+        int newIndex = patterns.size() - 1;
+        patternTable.setRowSelectionInterval(newIndex, newIndex);
+        
+        JOptionPane.showMessageDialog(this,
+            "Pattern '" + name + "' has been added.",
+            "Pattern Added", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Updates the selected pattern.
+     */
+    private void updatePattern() {
+        if (selectedPattern == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please select a pattern to update.",
+                "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Validate input
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter a name for the pattern.",
+                "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Update pattern properties
+        selectedPattern.setName(name);
+        selectedPattern.setPatternType((String) typeComboBox.getSelectedItem());
+        selectedPattern.setRepeating(repeatingCheckBox.isSelected());
+        selectedPattern.setReversible(reversibleCheckBox.isSelected());
+        selectedPattern.setWrapAround(wrapAroundCheckBox.isSelected());
+        selectedPattern.setRandom(randomCheckBox.isSelected());
+        
+        // Process movement sequence
+        List<String> instructions = new ArrayList<>();
+        String[] lines = sequenceTextArea.getText().split("\n");
+        for (String line : lines) {
+            String instruction = line.trim();
+            if (!instruction.isEmpty()) {
+                instructions.add(instruction);
+            } else {
+                // Empty line means "stay in place" (Wait)
+                instructions.add("W");
+            }
+        }
+        selectedPattern.setMovementInstructions(instructions);
+        
+        // Update table
+        updatePatternTable();
+        
+        // Reselect the pattern to refresh the visualizer
+        selectPattern(selectedPattern);
+        
+        JOptionPane.showMessageDialog(this,
+            "Pattern '" + name + "' has been updated.",
+            "Pattern Updated", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Deletes the selected pattern.
+     */
+    private void deletePattern() {
+        if (selectedPattern == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please select a pattern to delete.",
+                "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to delete pattern '" + selectedPattern.getName() + "'?",
+            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            // Get the index of the selected pattern
+            int selectedIndex = patterns.indexOf(selectedPattern);
+            
+            // Remove from the list
+            patterns.remove(selectedPattern);
+            
+            // Update the table
+            updatePatternTable();
+            
+            // Clear the form
+            clearForm();
+            
+            // Select another pattern if available
+            if (!patterns.isEmpty()) {
+                // Try to select the next pattern in the list, or the last one if we deleted the last
+                int newIndex = Math.min(selectedIndex, patterns.size() - 1);
+                patternTable.setRowSelectionInterval(newIndex, newIndex);
+                selectPattern(patterns.get(newIndex));
+            }
+            
+            JOptionPane.showMessageDialog(this,
+                "Pattern has been deleted.",
+                "Pattern Deleted", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+    
+    /**
+     * Clears the form fields.
+     */
+    private void clearForm() {
+        nameField.setText("");
+        typeComboBox.setSelectedItem(MovementPattern.TYPE_CUSTOM);
+        repeatingCheckBox.setSelected(true);
+        reversibleCheckBox.setSelected(false);
+        wrapAroundCheckBox.setSelected(true);
+        randomCheckBox.setSelected(false);
+        sequenceTextArea.setText("");
+        
+        selectedPattern = null;
+        
+        // Clear visualizer
+        if (visualizer != null) {
+            visualizer.setPattern(null);
+        }
+    }
+    
+    /**
+     * Restores default patterns.
+     */
+    private void restoreDefaults() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "This will restore the default movement patterns. Any custom patterns will be lost. Continue?",
+            "Confirm Restore Defaults", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            createDefaultPatterns();
+            
+            JOptionPane.showMessageDialog(this,
+                "Default patterns have been restored.",
+                "Defaults Restored", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+    
+    /**
+     * Imports a pattern from a file.
+     */
+    private void importPattern() {
+        // TODO: Implement pattern import
+        JOptionPane.showMessageDialog(this,
+            "Pattern import functionality is not yet implemented.",
+            "Not Implemented", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Exports the selected pattern to a file.
+     */
+    private void exportPattern() {
+        if (selectedPattern == null) {
+            JOptionPane.showMessageDialog(this,
+                "Please select a pattern to export.",
+                "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // TODO: Implement pattern export
+        JOptionPane.showMessageDialog(this,
+            "Pattern export functionality is not yet implemented.",
+            "Not Implemented", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Gets the list of movement patterns.
+     * 
+     * @return The list of movement patterns.
+     */
+    public List<MovementPattern> getPatterns() {
+        return patterns;
+    }
+    
+    /**
+     * Sets the list of movement patterns.
+     * 
+     * @param patterns The new list of patterns.
+     */
+    public void setPatterns(List<MovementPattern> patterns) {
+        this.patterns = new ArrayList<>(patterns);
+        updatePatternTable();
+        
+        // Select the first pattern if available
+        if (!this.patterns.isEmpty()) {
+            selectPattern(this.patterns.get(0));
+        } else {
+            clearForm();
+        }
+    }
+    
+    /**
+     * Sets available items for sharing with other editors.
+     * This method is not used in this editor but is included
+     * for compatibility with other editors.
+     * 
+     * @param items The list of available items.
+     */
+    public void setAvailableItems(List<?> items) {
+        // Not used in this editor
+    }
+    
+    /**
+     * Inner class for visualizing movement patterns.
+     */
+    private class MovementPatternVisualizer extends JPanel {
+        private static final int CELL_SIZE = 40;
+        private static final int MIN_GRID_SIZE = 5;
+        
+        private MovementPattern pattern;
+        private List<Point> patternPoints;
+        private int currentStep = 0;
+        private Timer animationTimer;
+        private boolean isAnimating = false;
+        
+        /**
+         * Creates a new movement pattern visualizer.
+         */
+        public MovementPatternVisualizer() {
+            setPreferredSize(new Dimension(400, 300));
+            setBackground(Color.WHITE);
+            setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
+            
+            // Set up animation timer
+            animationTimer = new Timer(500, e -> stepForward());
+            
+            // Add click listener for toggling animation
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    toggleAnimation();
+                }
+            });
+        }
+        
+        /**
+         * Sets the pattern to visualize.
+         * 
+         * @param pattern The pattern to visualize.
+         */
+        public void setPattern(MovementPattern pattern) {
+            this.pattern = pattern;
+            reset();
+        }
+        
+        /**
+         * Resets the visualization to the starting point.
+         */
+        public void reset() {
+            if (pattern != null && !pattern.isRandom()) {
+                // Simulate the pattern from the starting point
+                patternPoints = pattern.simulatePattern(1, 1, 20); // Simulate up to 20 steps
+                currentStep = 0;
+                repaint();
+                
+                if (isAnimating) {
+                    stopAnimation();
+                }
+            } else {
+                patternPoints = null;
+                currentStep = 0;
+                repaint();
+            }
+        }
+        
+        /**
+         * Steps forward in the animation.
+         */
+        public void stepForward() {
+            if (patternPoints != null && currentStep < patternPoints.size() - 1) {
+                currentStep++;
+                repaint();
+            } else if (isAnimating) {
+                stopAnimation();
+            }
+        }
+        
+        /**
+         * Steps backward in the animation.
+         */
+        public void stepBack() {
+            if (patternPoints != null && currentStep > 0) {
+                currentStep--;
+                repaint();
+            }
+        }
+        
+        /**
+         * Toggles the animation state.
+         */
+        public void toggleAnimation() {
+            if (isAnimating) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+        }
+        
+        /**
+         * Starts the animation.
+         */
+        private void startAnimation() {
+            if (pattern != null && !pattern.isRandom() && patternPoints != null && 
+                currentStep < patternPoints.size() - 1) {
+                
+                isAnimating = true;
+                playButton.setText("Pause");
+                animationTimer.start();
+            }
+        }
+        
+        /**
+         * Stops the animation.
+         */
+        private void stopAnimation() {
+            isAnimating = false;
+            playButton.setText("Play");
+            animationTimer.stop();
+        }
+        
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            
+            if (pattern == null || pattern.isRandom() || patternPoints == null || patternPoints.isEmpty()) {
+                // Show message for random patterns or when no pattern is available
+                g2d.setColor(Color.DARK_GRAY);
+                String msg;
+                if (pattern != null && pattern.isRandom()) {
+                    msg = "Random patterns cannot be visualized";
+                } else {
+                    msg = "No movement pattern to display";
+                }
+                g2d.drawString(msg, getWidth()/2 - g2d.getFontMetrics().stringWidth(msg)/2, getHeight()/2);
+                return;
+            }
+            
+            // Calculate the grid bounds
+            int minX = Integer.MAX_VALUE;
+            int minY = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE;
+            int maxY = Integer.MIN_VALUE;
+            
+            for (Point p : patternPoints) {
+                minX = Math.min(minX, p.x);
+                minY = Math.min(minY, p.y);
+                maxX = Math.max(maxX, p.x);
+                maxY = Math.max(maxY, p.y);
+            }
+            
+            // Ensure grid has some minimum size
+            if (maxX - minX < MIN_GRID_SIZE) {
+                int expand = (MIN_GRID_SIZE - (maxX - minX)) / 2;
+                minX -= expand;
+                maxX += expand;
+            }
+            if (maxY - minY < MIN_GRID_SIZE) {
+                int expand = (MIN_GRID_SIZE - (maxY - minY)) / 2;
+                minY -= expand;
+                maxY += expand;
+            }
+            
+            // Calculate grid dimensions
+            int gridWidth = maxX - minX + 3;  // +3 for padding
+            int gridHeight = maxY - minY + 3; // +3 for padding
+            
+            // Calculate cell size based on available space
+            int cellWidth = Math.min(getWidth() / gridWidth, CELL_SIZE);
+            int cellHeight = Math.min(getHeight() / gridHeight, CELL_SIZE);
+            int cellSize = Math.min(cellWidth, cellHeight);
+            
+            // Calculate grid offset to center it
+            int offsetX = (getWidth() - gridWidth * cellSize) / 2 + cellSize;
+            int offsetY = (getHeight() - gridHeight * cellSize) / 2 + cellSize;
+            
+            // Draw grid
+            g2d.setColor(Color.LIGHT_GRAY);
+            for (int x = 0; x <= gridWidth; x++) {
+                g2d.drawLine(
+                    offsetX + x * cellSize,
+                    offsetY,
+                    offsetX + x * cellSize,
+                    offsetY + gridHeight * cellSize
+                );
+            }
+            
+            for (int y = 0; y <= gridHeight; y++) {
+                g2d.drawLine(
+                    offsetX,
+                    offsetY + y * cellSize,
+                    offsetX + gridWidth * cellSize,
+                    offsetY + y * cellSize
+                );
+            }
+            
+            // Draw the pattern points up to the current step
+            for (int i = 0; i <= currentStep && i < patternPoints.size(); i++) {
+                Point p = patternPoints.get(i);
+                
+                // Calculate position in the grid
+                int x = offsetX + (p.x - minX + 1) * cellSize;
+                int y = offsetY + (p.y - minY + 1) * cellSize;
+                
+                // Draw the cell
+                if (i == currentStep) {
+                    // Current position - highlighted
+                    g2d.setColor(new Color(255, 100, 100));
+                } else {
+                    // Past positions - faded
+                    g2d.setColor(new Color(255, 200, 200));
+                }
+                
+                g2d.fillRect(
+                    x - cellSize/2,
+                    y - cellSize/2,
+                    cellSize - 1,
+                    cellSize - 1
+                );
+                
+                // Draw step number
+                g2d.setColor(Color.BLACK);
+                String stepStr = String.valueOf(i + 1);
+                FontMetrics fm = g2d.getFontMetrics();
+                g2d.drawString(
+                    stepStr,
+                    x - fm.stringWidth(stepStr)/2,
+                    y + fm.getAscent()/2 - fm.getDescent()/2
+                );
+                
+                // Draw lines connecting points
+                if (i > 0) {
+                    Point prevP = patternPoints.get(i - 1);
+                    int prevX = offsetX + (prevP.x - minX + 1) * cellSize;
+                    int prevY = offsetY + (prevP.y - minY + 1) * cellSize;
+                    
+                    g2d.setColor(new Color(0, 0, 200, 128));
+                    g2d.setStroke(new BasicStroke(2));
+                    g2d.drawLine(prevX, prevY, x, y);
+                    
+                    // Reset stroke
+                    g2d.setStroke(new BasicStroke(1));
+                }
+            }
+            
+            // Draw start and end markers
+            if (!patternPoints.isEmpty()) {
+                // Start marker (green circle)
+                Point startP = patternPoints.get(0);
+                int startX = offsetX + (startP.x - minX + 1) * cellSize;
+                int startY = offsetY + (startP.y - minY + 1) * cellSize;
+                
+                g2d.setColor(Color.GREEN);
+                int markerSize = cellSize / 3;
+                g2d.fillOval(startX - markerSize, startY - markerSize, markerSize*2, markerSize*2);
+                
+                // End marker if at the end (blue triangle)
+                if (currentStep == patternPoints.size() - 1) {
+                    Point endP = patternPoints.get(patternPoints.size() - 1);
+                    int endX = offsetX + (endP.x - minX + 1) * cellSize;
+                    int endY = offsetY + (endP.y - minY + 1) * cellSize;
+                    
+                    g2d.setColor(Color.BLUE);
+                    int[] xPoints = {endX - markerSize, endX + markerSize, endX};
+                    int[] yPoints = {endY + markerSize, endY + markerSize, endY - markerSize};
+                    g2d.fillPolygon(xPoints, yPoints, 3);
+                }
+            }
+            
+            // Draw step counter
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 14));
+            String stepCount = "Step: " + (currentStep + 1) + " / " + patternPoints.size();
+            g2d.drawString(stepCount, 10, 20);
+        }
+    }
+    
+    /**
+     * Main method for testing the movement pattern editor.
+     * 
+     * @param args Command-line arguments.
+     */
+    public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("Movement Pattern Editor");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(900, 700);
+            frame.getContentPane().add(new MovementPatternEditorNew());
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
+    }
+}

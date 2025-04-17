@@ -1,0 +1,10 @@
+#Item: Mana Potion
+#Fri Apr 04 23:51:50 GMT 2025
+description=A shimmering blue potion that restores magical energy.
+difficulties=Easy,Medium,Hard
+foodValue=0
+goldValue=75
+imagePath=resources/images/items/three.png
+name=Mana Potion
+type=Item
+waterValue=10

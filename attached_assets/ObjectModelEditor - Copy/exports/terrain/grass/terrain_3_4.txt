@@ -1,0 +1,13 @@
+#Terrain: Forest
+#Sun Apr 06 00:55:21 GMT 2025
+creatureCount=0
+description=A dense forest with tall trees and undergrowth.
+goldCost=0
+imagePath=resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/delapouite/forest.png
+itemCount=0
+movementCost=2
+name=Forest
+spawnerCount=0
+strengthCost=1
+thirstCost=1
+traderCount=0

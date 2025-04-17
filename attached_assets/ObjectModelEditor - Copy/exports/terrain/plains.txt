@@ -1,0 +1,13 @@
+#Terrain: Plains
+#Sun Apr 06 00:53:14 GMT 2025
+creatureCount=0
+description=Open grassland with gentle rolling hills.
+goldCost=0
+imagePath=/home/runner/workspace/resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/delapouite/grass.png
+itemCount=0
+movementCost=1
+name=Plains
+spawnerCount=0
+strengthCost=1
+thirstCost=1
+traderCount=0

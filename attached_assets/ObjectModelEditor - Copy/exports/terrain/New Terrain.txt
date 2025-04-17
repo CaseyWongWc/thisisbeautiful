@@ -1,0 +1,10 @@
+#Terrain: New Terrain
+#Sun Apr 06 07:09:02 GMT 2025
+description=
+goldCost=0
+hungerCost=0
+imagePath=/home/runner/workspace/resources/ICONDUMP/nature.png/icons/ffffff/000000/1x1/delapouite/grass.png
+movementCost=0
+name=New Terrain
+strengthCost=0
+thirstCost=0

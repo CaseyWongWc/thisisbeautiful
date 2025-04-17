@@ -1,0 +1,21 @@
+# Trader Properties
+name=Wandering Merchant
+description=A mysterious trader who travels the wasteland offering rare goods.
+type=Trader
+imagePath=resources/images/traders/merchant.png
+encounterDialogue=Greetings, traveler! Care to peruse my wares? I have items you won't find anywhere else.
+tradeEventDialogue=Here's what I have to offer today. Gold speaks louder than words, friend.
+positiveDialogue=A fine choice! May it serve you well on your journey.
+leaveTradeDialogue=Safe travels, friend. Perhaps our paths will cross again.
+aggroDialogue=You dare try to cheat me? You'll regret that decision!
+maxOffersBeforeDecline=3
+isAggro=false
+aggroOnMaxReject=true
+maxAggroDuration=60
+stealSuccessRate=0.25
+minPlayerResourcePercentage=0.0
+maxPlayerResourcePercentage=1.0
+strengthPenalty=15
+waterPenalty=10
+foodPenalty=10
+tradeOffers=Water Flask,Dried Meat,Health Potion

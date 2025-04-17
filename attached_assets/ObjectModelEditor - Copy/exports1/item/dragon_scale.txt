@@ -1,0 +1,11 @@
+
+#Item: Dragon Scale
+#Fri Apr 04 23:50:00 GMT 2025
+type=Item
+name=Dragon Scale
+description=A rare and valuable scale from an ancient dragon.
+imagePath=resources/images/items/eight.png
+foodValue=0
+goldValue=500
+waterValue=0
+difficulties=Hard

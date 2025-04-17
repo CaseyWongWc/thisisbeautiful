@@ -1,0 +1,13 @@
+#Creature: Wolf
+#Sat Apr 06 00:00:00 UTC 2025
+type=Creature
+name=Wolf
+description=A fierce wolf that hunts in the forest.
+imagePath=resources/ICONDUMP/animal.png/icons/000000/transparent/1x1/lorc/wolf-head.png
+health=50
+attack=15
+defense=5
+aggro=true
+movementPatternId=random_wander
+inventory=
+difficulties=Medium,Hard

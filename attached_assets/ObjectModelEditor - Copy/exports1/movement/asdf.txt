@@ -1,0 +1,8 @@
+#Movement: asdf
+#Sat Apr 05 04:13:53 GMT 2025
+directions=
+moveInterval=1
+name=asdf
+random=false
+repeating=false
+reversible=false

@@ -1,0 +1,1094 @@
+package objectEditor.util;
+
+import objectEditor.model.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+/**
+ * Utility class for file operations.
+ */
+public class FileUtils {
+
+    // Object caches to improve performance
+    private static final Map<String, Item> itemCache = new HashMap<>();
+    private static final Map<String, Creature> creatureCache = new HashMap<>();
+    private static final Map<String, Movement> movementCache = new HashMap<>();
+    private static final Map<String, Trader> traderCache = new HashMap<>();
+    private static final Map<String, Spawner> spawnerCache = new HashMap<>();
+    
+    // Track hashcodes of last saved objects to avoid redundant saves
+    private static final Map<String, Integer> lastSavedObjects = new HashMap<>();
+    
+    /**
+     * Saves an item to a file.
+     * 
+     * @param item the item to save
+     * @param filePath the file path
+     * @return true if the item was saved successfully, false otherwise
+     */
+    public static boolean saveItem(Item item, String filePath) {
+        if (item == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        // Check if the item has changed since last save
+        if (lastSavedObjects.containsKey(filePath) && 
+            lastSavedObjects.get(filePath) == item.hashCode()) {
+            // Item hasn't changed, no need to save
+            return true;
+        }
+        
+        try {
+            // Create the directory if it doesn't exist
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Store item properties
+            properties.setProperty("name", item.getName());
+            properties.setProperty("description", item.getDescription());
+            properties.setProperty("imagePath", item.getImagePath() != null ? item.getImagePath() : "");
+            properties.setProperty("goldValue", String.valueOf(item.getGoldValue()));
+            properties.setProperty("foodValue", String.valueOf(item.getFoodValue()));
+            properties.setProperty("waterValue", String.valueOf(item.getWaterValue()));
+            properties.setProperty("difficulties", item.getDifficulties());
+            properties.setProperty("type", item.getType());
+            
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Item: " + item.getName());
+                // Update cache with saved item hash
+                lastSavedObjects.put(filePath, item.hashCode());
+                return true;
+            }
+        } catch (IOException e) {
+            ErrorLogger.logError("Error saving item to " + filePath, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Loads an item from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded item, or null if the file could not be loaded
+     */
+    public static Item loadItem(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check if we already have this item cached
+        if (itemCache.containsKey(filePath)) {
+            return itemCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            Item item = new Item();
+            
+            // Load item properties
+            item.setName(properties.getProperty("name", ""));
+            item.setDescription(properties.getProperty("description", ""));
+            String imagePath = properties.getProperty("imagePath", "");
+            item.setImagePath(imagePath.isEmpty() ? null : imagePath);
+            
+            try {
+                item.setGoldValue(Integer.parseInt(properties.getProperty("goldValue", "0")));
+            } catch (NumberFormatException e) {
+                item.setGoldValue(0);
+            }
+            
+            try {
+                item.setFoodValue(Integer.parseInt(properties.getProperty("foodValue", "0")));
+            } catch (NumberFormatException e) {
+                item.setFoodValue(0);
+            }
+            
+            try {
+                item.setWaterValue(Integer.parseInt(properties.getProperty("waterValue", "0")));
+            } catch (NumberFormatException e) {
+                item.setWaterValue(0);
+            }
+            
+            item.setDifficulties(properties.getProperty("difficulties", ""));
+            item.setType(properties.getProperty("type", ""));
+            
+            // Add item to cache
+            itemCache.put(filePath, item);
+            lastSavedObjects.put(filePath, item.hashCode());
+            
+            return item;
+        } catch (IOException e) {
+            ErrorLogger.logError("Error loading item from " + filePath, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Saves a creature to a file.
+     * 
+     * @param creature the creature to save
+     * @param filePath the file path
+     * @return true if successful
+     */
+    public static boolean saveCreature(Creature creature, String filePath) {
+        if (creature == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        // Check if the creature has changed
+        if (lastSavedObjects.containsKey(filePath) && 
+            lastSavedObjects.get(filePath) == creature.hashCode()) {
+            // Creature hasn't changed
+            return true;
+        }
+        
+        try {
+            // Create directory if needed
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Store creature properties
+            properties.setProperty("name", creature.getName());
+            properties.setProperty("description", creature.getDescription());
+            properties.setProperty("imagePath", creature.getImagePath() != null ? creature.getImagePath() : "");
+            properties.setProperty("strengthPenalty", String.valueOf(creature.getStrengthPenalty()));
+            properties.setProperty("waterPenalty", String.valueOf(creature.getWaterPenalty()));
+            properties.setProperty("goldPenalty", String.valueOf(creature.getGoldPenalty()));
+            properties.setProperty("difficulties", creature.getDifficulties());
+            
+            // Store movement pattern if present
+            Movement movement = creature.getMovement();
+            if (movement != null) {
+                properties.setProperty("movement", movement.getName());
+            } else {
+                properties.setProperty("movement", "");
+            }
+            
+            // Store itemDrop if present
+            Item itemDrop = creature.getItemDrop();
+            if (itemDrop != null) {
+                properties.setProperty("itemDrop", itemDrop.getName());
+            } else {
+                properties.setProperty("itemDrop", "");
+            }
+            
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Creature: " + creature.getName());
+                lastSavedObjects.put(filePath, creature.hashCode());
+                return true;
+            }
+        } catch (IOException e) {
+            ErrorLogger.logError("Error saving creature to " + filePath, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Loads a creature from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded creature, or null if failed
+     */
+    public static Creature loadCreature(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check cache
+        if (creatureCache.containsKey(filePath)) {
+            return creatureCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            Creature creature = new Creature();
+            
+            // Load basic properties
+            creature.setName(properties.getProperty("name", ""));
+            creature.setDescription(properties.getProperty("description", ""));
+            String imagePath = properties.getProperty("imagePath", "");
+            creature.setImagePath(imagePath.isEmpty() ? null : imagePath);
+            
+            // Load numeric properties
+            try {
+                creature.setStrengthPenalty(Integer.parseInt(properties.getProperty("strengthPenalty", "0")));
+            } catch (NumberFormatException e) {
+                creature.setStrengthPenalty(0);
+            }
+            
+            try {
+                creature.setWaterPenalty(Integer.parseInt(properties.getProperty("waterPenalty", "0")));
+            } catch (NumberFormatException e) {
+                creature.setWaterPenalty(0);
+            }
+            
+            try {
+                creature.setGoldPenalty(Integer.parseInt(properties.getProperty("goldPenalty", "0")));
+            } catch (NumberFormatException e) {
+                creature.setGoldPenalty(0);
+            }
+            
+            // Load difficulties
+            creature.setDifficulties(properties.getProperty("difficulties", ""));
+            
+            // Load movement pattern if present
+            String movementName = properties.getProperty("movement", "");
+            if (!movementName.isEmpty()) {
+                try {
+                    // Try to load the movement pattern
+                    String movementPath = "exports/movement/" + movementName + ".txt";
+                    Movement movement = loadMovement(movementPath);
+                    if (movement != null) {
+                        creature.setMovement(movement);
+                    }
+                } catch (Exception e) {
+                    ErrorLogger.logError("Error loading movement for creature", e);
+                }
+            }
+            
+            // Load item drop if present
+            String itemDropName = properties.getProperty("itemDrop", "");
+            if (!itemDropName.isEmpty()) {
+                try {
+                    // Try to load the item
+                    String itemPath = "exports/item/" + itemDropName + ".txt";
+                    Item item = loadItem(itemPath);
+                    if (item != null) {
+                        creature.setItemDrop(item);
+                    }
+                } catch (Exception e) {
+                    ErrorLogger.logError("Error loading item drop for creature", e);
+                }
+            }
+            
+            // Add to cache
+            creatureCache.put(filePath, creature);
+            lastSavedObjects.put(filePath, creature.hashCode());
+            
+            return creature;
+        } catch (IOException e) {
+            ErrorLogger.logError("Error loading creature from " + filePath, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Saves a movement pattern to a file.
+     * 
+     * @param movement the movement pattern to save
+     * @param filePath the file path
+     * @return true if successful
+     */
+    public static boolean saveMovement(Movement movement, String filePath) {
+        if (movement == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        // Check if changed
+        if (lastSavedObjects.containsKey(filePath) && 
+            lastSavedObjects.get(filePath) == movement.hashCode()) {
+            return true;
+        }
+        
+        try {
+            // Create directory if needed
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Store movement properties
+            properties.setProperty("name", movement.getName());
+            properties.setProperty("description", movement.getDescription());
+            properties.setProperty("repeating", String.valueOf(movement.isRepeating()));
+            properties.setProperty("random", String.valueOf(movement.isRandom()));
+            properties.setProperty("reversible", String.valueOf(movement.isReversible()));
+            properties.setProperty("moveInterval", String.valueOf(movement.getMoveInterval()));
+            
+            // Store directions
+            List<String> directions = movement.getDirections();
+            if (directions != null && !directions.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < directions.size(); i++) {
+                    if (i > 0) sb.append(",");
+                    sb.append(directions.get(i));
+                }
+                properties.setProperty("directions", sb.toString());
+            } else {
+                properties.setProperty("directions", "");
+            }
+            
+            // Save properties
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Movement Pattern: " + movement.getName());
+                lastSavedObjects.put(filePath, movement.hashCode());
+                return true;
+            }
+        } catch (IOException e) {
+            ErrorLogger.logError("Error saving movement pattern to " + filePath, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Loads a movement pattern from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded movement pattern, or null if failed
+     */
+    public static Movement loadMovement(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check cache
+        if (movementCache.containsKey(filePath)) {
+            return movementCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            Movement movement = new Movement();
+            
+            // Load properties
+            movement.setName(properties.getProperty("name", ""));
+            movement.setDescription(properties.getProperty("description", ""));
+            
+            try {
+                movement.setRepeating(Boolean.parseBoolean(properties.getProperty("repeating", "false")));
+            } catch (Exception e) {
+                movement.setRepeating(false);
+            }
+            
+            try {
+                movement.setRandom(Boolean.parseBoolean(properties.getProperty("random", "false")));
+            } catch (Exception e) {
+                movement.setRandom(false);
+            }
+            
+            try {
+                movement.setReversible(Boolean.parseBoolean(properties.getProperty("reversible", "false")));
+            } catch (Exception e) {
+                movement.setReversible(false);
+            }
+            
+            try {
+                movement.setMoveInterval(Integer.parseInt(properties.getProperty("moveInterval", "1")));
+            } catch (NumberFormatException e) {
+                movement.setMoveInterval(1);
+            }
+            
+            // Load directions
+            String directionsStr = properties.getProperty("directions", "");
+            if (!directionsStr.isEmpty()) {
+                String[] dirs = directionsStr.split(",");
+                List<String> directions = new ArrayList<>();
+                for (String dir : dirs) {
+                    if (!dir.trim().isEmpty()) {
+                        directions.add(dir.trim());
+                    }
+                }
+                movement.setDirections(directions);
+            }
+            
+            // Add to cache
+            movementCache.put(filePath, movement);
+            lastSavedObjects.put(filePath, movement.hashCode());
+            
+            return movement;
+        } catch (IOException e) {
+            ErrorLogger.logError("Error loading movement pattern from " + filePath, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Saves a trader to a file.
+     * 
+     * @param trader the trader to save
+     * @param filePath the file path
+     * @return true if successful
+     */
+    public static boolean saveTrader(Trader trader, String filePath) {
+        if (trader == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        // Check if changed
+        if (lastSavedObjects.containsKey(filePath) && 
+            lastSavedObjects.get(filePath) == trader.hashCode()) {
+            return true;
+        }
+        
+        try {
+            // Create directory if needed
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Store properties
+            properties.setProperty("name", trader.getName());
+            properties.setProperty("description", trader.getDescription());
+            properties.setProperty("imagePath", trader.getImagePath() != null ? trader.getImagePath() : "");
+            
+            // Save trader-specific properties
+            properties.setProperty("encounterDialogue", trader.getEncounterDialogue());
+            properties.setProperty("tradeEventDialogue", trader.getTradeEventDialogue());
+            properties.setProperty("positiveDialogue", trader.getPositiveDialogue());
+            properties.setProperty("leaveTradeDialogue", trader.getLeaveTradeDialogue());
+            properties.setProperty("aggroDialogue", trader.getAggroDialogue());
+            properties.setProperty("maxOffersBeforeDecline", String.valueOf(trader.getMaxOffersBeforeDecline()));
+            properties.setProperty("isAggro", String.valueOf(trader.isAggro()));
+            properties.setProperty("aggroOnMaxReject", String.valueOf(trader.isAggroOnMaxReject()));
+            
+            // Store passive movement pattern if present
+            Movement passiveMovement = trader.getPassiveMovement();
+            if (passiveMovement != null) {
+                properties.setProperty("passiveMovement", passiveMovement.getName());
+            } else {
+                properties.setProperty("passiveMovement", "");
+            }
+            
+            // Store aggro movement pattern if present
+            Movement aggroMovement = trader.getAggroMovement();
+            if (aggroMovement != null) {
+                properties.setProperty("aggroMovement", aggroMovement.getName());
+            } else {
+                properties.setProperty("aggroMovement", "");
+            }
+            
+            // Save properties
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Trader: " + trader.getName());
+                lastSavedObjects.put(filePath, trader.hashCode());
+                return true;
+            }
+        } catch (IOException e) {
+            ErrorLogger.logError("Error saving trader to " + filePath, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Loads a trader from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded trader, or null if failed
+     */
+    public static Trader loadTrader(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check cache
+        if (traderCache.containsKey(filePath)) {
+            return traderCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            Trader trader = new Trader();
+            
+            // Load basic properties
+            trader.setName(properties.getProperty("name", ""));
+            trader.setDescription(properties.getProperty("description", ""));
+            String imagePath = properties.getProperty("imagePath", "");
+            trader.setImagePath(imagePath.isEmpty() ? null : imagePath);
+            
+            // Load trader-specific properties
+            trader.setEncounterDialogue(properties.getProperty("encounterDialogue", ""));
+            trader.setTradeEventDialogue(properties.getProperty("tradeEventDialogue", ""));
+            trader.setPositiveDialogue(properties.getProperty("positiveDialogue", ""));
+            trader.setLeaveTradeDialogue(properties.getProperty("leaveTradeDialogue", ""));
+            trader.setAggroDialogue(properties.getProperty("aggroDialogue", ""));
+            
+            // Load numeric properties
+            try {
+                trader.setMaxOffersBeforeDecline(Integer.parseInt(properties.getProperty("maxOffersBeforeDecline", "3")));
+            } catch (NumberFormatException e) {
+                trader.setMaxOffersBeforeDecline(3);
+            }
+            
+            // Load boolean properties
+            try {
+                trader.setAggro(Boolean.parseBoolean(properties.getProperty("isAggro", "false")));
+            } catch (Exception e) {
+                trader.setAggro(false);
+            }
+            
+            try {
+                trader.setAggroOnMaxReject(Boolean.parseBoolean(properties.getProperty("aggroOnMaxReject", "false")));
+            } catch (Exception e) {
+                trader.setAggroOnMaxReject(false);
+            }
+            
+            // Load passive movement pattern if present
+            String passiveMovementName = properties.getProperty("passiveMovement", "");
+            if (!passiveMovementName.isEmpty()) {
+                try {
+                    // Try to load the movement pattern
+                    String movementPath = "exports/movement/" + passiveMovementName + ".txt";
+                    Movement movement = loadMovement(movementPath);
+                    if (movement != null) {
+                        trader.setPassiveMovement(movement);
+                    }
+                } catch (Exception e) {
+                    ErrorLogger.logError("Error loading passive movement for trader", e);
+                }
+            }
+            
+            // Load aggro movement pattern if present
+            String aggroMovementName = properties.getProperty("aggroMovement", "");
+            if (!aggroMovementName.isEmpty()) {
+                try {
+                    // Try to load the movement pattern
+                    String movementPath = "exports/movement/" + aggroMovementName + ".txt";
+                    Movement movement = loadMovement(movementPath);
+                    if (movement != null) {
+                        trader.setAggroMovement(movement);
+                    }
+                } catch (Exception e) {
+                    ErrorLogger.logError("Error loading aggro movement for trader", e);
+                }
+            }
+            
+            // Add to cache
+            traderCache.put(filePath, trader);
+            lastSavedObjects.put(filePath, trader.hashCode());
+            
+            return trader;
+        } catch (IOException e) {
+            ErrorLogger.logError("Error loading trader from " + filePath, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Saves a spawner to a file.
+     * 
+     * @param spawner the spawner to save
+     * @param filePath the file path
+     * @return true if successful
+     */
+    public static boolean saveSpawner(Spawner spawner, String filePath) {
+        if (spawner == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        // Check if changed
+        if (lastSavedObjects.containsKey(filePath) && 
+            lastSavedObjects.get(filePath) == spawner.hashCode()) {
+            return true;
+        }
+        
+        try {
+            // Create directory if needed
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Store properties
+            properties.setProperty("name", spawner.getName());
+            properties.setProperty("description", spawner.getDescription());
+            properties.setProperty("maxSpawnCap", String.valueOf(spawner.getMaxSpawnCap()));
+            properties.setProperty("spawnFrequency", String.valueOf(spawner.getSpawnFrequency()));
+            properties.setProperty("isDirected", String.valueOf(spawner.isDirected()));
+            properties.setProperty("direction", spawner.getDirection());
+            properties.setProperty("randomOrientation", String.valueOf(spawner.isRandomOrientation()));
+            
+            // Store object to spawn
+            String objectTemplate = spawner.getObjectTemplate();
+            properties.setProperty("objectTemplate", objectTemplate != null ? objectTemplate : "");
+            
+            // Store spawn type
+            String objectType = spawner.getObjectType();
+            properties.setProperty("objectType", objectType != null ? objectType : "");
+            
+            // Save properties
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Spawner: " + spawner.getName());
+                lastSavedObjects.put(filePath, spawner.hashCode());
+                return true;
+            }
+        } catch (IOException e) {
+            ErrorLogger.logError("Error saving spawner to " + filePath, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Loads a spawner from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded spawner, or null if failed
+     */
+    public static Spawner loadSpawner(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check cache
+        if (spawnerCache.containsKey(filePath)) {
+            return spawnerCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            Spawner spawner = new Spawner();
+            
+            // Load basic properties
+            spawner.setName(properties.getProperty("name", ""));
+            spawner.setDescription(properties.getProperty("description", ""));
+            
+            // Load numeric properties
+            try {
+                spawner.setMaxSpawnCap(Integer.parseInt(properties.getProperty("maxSpawnCap", "1")));
+            } catch (NumberFormatException e) {
+                spawner.setMaxSpawnCap(1);
+            }
+            
+            try {
+                spawner.setSpawnFrequency(Integer.parseInt(properties.getProperty("spawnFrequency", "5")));
+            } catch (NumberFormatException e) {
+                spawner.setSpawnFrequency(5);
+            }
+            
+            // Load direction properties
+            try {
+                spawner.setDirected(Boolean.parseBoolean(properties.getProperty("isDirected", "false")));
+            } catch (Exception e) {
+                spawner.setDirected(false);
+            }
+            
+            spawner.setDirection(properties.getProperty("direction", "none"));
+            
+            try {
+                spawner.setRandomOrientation(Boolean.parseBoolean(properties.getProperty("randomOrientation", "false")));
+            } catch (Exception e) {
+                spawner.setRandomOrientation(false);
+            }
+            
+            // Load what to spawn
+            String objectTemplate = properties.getProperty("objectTemplate", "");
+            if (!objectTemplate.isEmpty()) {
+                spawner.setObjectTemplate(objectTemplate);
+            }
+            
+            String objectType = properties.getProperty("objectType", "");
+            if (!objectType.isEmpty()) {
+                spawner.setObjectType(objectType);
+            }
+            
+            // Add to cache
+            spawnerCache.put(filePath, spawner);
+            lastSavedObjects.put(filePath, spawner.hashCode());
+            
+            return spawner;
+        } catch (IOException e) {
+            ErrorLogger.logError("Error loading spawner from " + filePath, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Saves a terrain to a file.
+     * 
+     * @param terrain the terrain to save
+     * @param filePath the file path
+     * @return true if successful
+     */
+    public static boolean saveTerrain(Terrain terrain, String filePath) {
+        if (terrain == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Create the directory if it doesn't exist
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Add all basic properties
+            properties.setProperty("name", terrain.getName());
+            properties.setProperty("description", terrain.getDescription());
+            properties.setProperty("imagePath", terrain.getImagePath() != null ? terrain.getImagePath() : "");
+            
+            // Add terrain cost properties
+            properties.setProperty("movementCost", String.valueOf(terrain.getMovementCost()));
+            properties.setProperty("strengthCost", String.valueOf(terrain.getStrengthCost()));
+            properties.setProperty("thirstCost", String.valueOf(terrain.getThirstCost()));
+            properties.setProperty("goldCost", String.valueOf(terrain.getGoldCost()));
+            
+            // Add counts for collections
+            properties.setProperty("spawnerCount", String.valueOf(terrain.getSpawners().size()));
+            properties.setProperty("traderCount", String.valueOf(terrain.getTraders().size()));
+            properties.setProperty("creatureCount", String.valueOf(terrain.getCreatures().size()));
+            properties.setProperty("itemCount", String.valueOf(terrain.getItems().size()));
+            
+            // Add each spawner, trader, creature, and item reference by name
+            int idx = 0;
+            for (Spawner spawner : terrain.getSpawners()) {
+                properties.setProperty("spawner." + idx, spawner.getName());
+                idx++;
+            }
+            
+            idx = 0;
+            for (Trader trader : terrain.getTraders()) {
+                properties.setProperty("trader." + idx, trader.getName());
+                idx++;
+            }
+            
+            idx = 0;
+            for (Creature creature : terrain.getCreatures()) {
+                properties.setProperty("creature." + idx, creature.getName());
+                idx++;
+            }
+            
+            idx = 0;
+            for (Item item : terrain.getItems()) {
+                properties.setProperty("item." + idx, item.getName());
+                idx++;
+            }
+            
+            // Save properties to file
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Terrain: " + terrain.getName());
+                // Cache the saved terrain to avoid unnecessary future saves
+                lastSavedObjects.put(filePath, terrain.hashCode());
+                return true;
+            }
+        } catch (Exception e) {
+            ErrorLogger.logError("Error saving terrain to " + filePath, e);
+            return false;
+        }
+    }
+
+    /**
+     * Loads a terrain from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded terrain, or null if failed
+     */
+    public static Terrain loadTerrain(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check if we already have this terrain cached
+        if (terrainCache.containsKey(filePath)) {
+            return terrainCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            Terrain terrain = new Terrain();
+            
+            // Load basic properties
+            terrain.setName(properties.getProperty("name", ""));
+            terrain.setDescription(properties.getProperty("description", ""));
+            String imagePath = properties.getProperty("imagePath", "");
+            terrain.setImagePath(imagePath.isEmpty() ? null : imagePath);
+            
+            // Load terrain cost properties
+            try {
+                terrain.setMovementCost(Integer.parseInt(properties.getProperty("movementCost", "0")));
+            } catch (NumberFormatException e) {
+                terrain.setMovementCost(0);
+            }
+            
+            try {
+                terrain.setStrengthCost(Integer.parseInt(properties.getProperty("strengthCost", "0")));
+            } catch (NumberFormatException e) {
+                terrain.setStrengthCost(0);
+            }
+            
+            try {
+                terrain.setThirstCost(Integer.parseInt(properties.getProperty("thirstCost", "0")));
+            } catch (NumberFormatException e) {
+                terrain.setThirstCost(0);
+            }
+            
+            try {
+                terrain.setGoldCost(Integer.parseInt(properties.getProperty("goldCost", "0")));
+            } catch (NumberFormatException e) {
+                terrain.setGoldCost(0);
+            }
+            
+            // Load references to other objects
+            
+            int spawnerCount = Integer.parseInt(properties.getProperty("spawnerCount", "0"));
+            for (int i = 0; i < spawnerCount; i++) {
+                String spawnerName = properties.getProperty("spawner." + i);
+                if (spawnerName != null && !spawnerName.isEmpty()) {
+                    // Try to load the referenced spawner
+                    try {
+                        String spawnerPath = "exports/spawner/" + spawnerName + ".txt";
+                        Spawner spawner = loadSpawner(spawnerPath);
+                        if (spawner != null) {
+                            terrain.addSpawner(spawner);
+                        }
+                    } catch (Exception e) {
+                        ErrorLogger.logError("Error loading spawner reference for terrain", e);
+                    }
+                }
+            }
+            
+            int traderCount = Integer.parseInt(properties.getProperty("traderCount", "0"));
+            for (int i = 0; i < traderCount; i++) {
+                String traderName = properties.getProperty("trader." + i);
+                if (traderName != null && !traderName.isEmpty()) {
+                    // Try to load the referenced trader
+                    try {
+                        String traderPath = "exports/trader/" + traderName + ".txt";
+                        Trader trader = loadTrader(traderPath);
+                        if (trader != null) {
+                            terrain.addTrader(trader);
+                        }
+                    } catch (Exception e) {
+                        ErrorLogger.logError("Error loading trader reference for terrain", e);
+                    }
+                }
+            }
+            
+            int creatureCount = Integer.parseInt(properties.getProperty("creatureCount", "0"));
+            for (int i = 0; i < creatureCount; i++) {
+                String creatureName = properties.getProperty("creature." + i);
+                if (creatureName != null && !creatureName.isEmpty()) {
+                    // Try to load the referenced creature
+                    try {
+                        String creaturePath = "exports/creature/" + creatureName + ".txt";
+                        Creature creature = loadCreature(creaturePath);
+                        if (creature != null) {
+                            terrain.addCreature(creature);
+                        }
+                    } catch (Exception e) {
+                        ErrorLogger.logError("Error loading creature reference for terrain", e);
+                    }
+                }
+            }
+            
+            int itemCount = Integer.parseInt(properties.getProperty("itemCount", "0"));
+            for (int i = 0; i < itemCount; i++) {
+                String itemName = properties.getProperty("item." + i);
+                if (itemName != null && !itemName.isEmpty()) {
+                    // Try to load the referenced item
+                    try {
+                        String itemPath = "exports/item/" + itemName + ".txt";
+                        Item item = loadItem(itemPath);
+                        if (item != null) {
+                            terrain.addItem(item);
+                        }
+                    } catch (Exception e) {
+                        ErrorLogger.logError("Error loading item reference for terrain", e);
+                    }
+                }
+            }
+            
+            // Cache the loaded terrain
+            terrainCache.put(filePath, terrain);
+            lastSavedObjects.put(filePath, terrain.hashCode());
+            
+            return terrain;
+        } catch (Exception e) {
+            ErrorLogger.logError("Error loading terrain from " + filePath, e);
+            return null;
+        }
+    }
+
+    /**
+     * Saves a map to a file.
+     * 
+     * @param map the map to save
+     * @param filePath the file path
+     * @return true if successful
+     */
+    public static boolean saveMap(objectEditor.model.Map map, String filePath) {
+        if (map == null || filePath == null || filePath.isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Create the directory if it doesn't exist
+            File file = new File(filePath);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            
+            Properties properties = new Properties();
+            
+            // Add basic map properties
+            properties.setProperty("name", map.getName());
+            properties.setProperty("description", map.getDescription());
+            properties.setProperty("width", String.valueOf(map.getWidth()));
+            properties.setProperty("height", String.valueOf(map.getHeight()));
+            
+            // Store terrain cells
+            for (int y = 0; y < map.getHeight(); y++) {
+                for (int x = 0; x < map.getWidth(); x++) {
+                    Terrain terrain = map.getTerrainAt(x, y);
+                    if (terrain != null) {
+                        // Create subdirectory for this map's terrains if needed
+                        String mapName = map.getName().replaceAll("\\s+", "_");
+                        File terrainDir = new File("exports/terrain/" + mapName);
+                        if (!terrainDir.exists()) {
+                            terrainDir.mkdirs();
+                        }
+                        
+                        // Save each terrain to its own file
+                        String terrainFile = "exports/terrain/" + mapName + "/terrain_" + x + "_" + y + ".txt";
+                        saveTerrain(terrain, terrainFile);
+                        
+                        // Store reference to the terrain file
+                        properties.setProperty("terrain." + x + "." + y, terrainFile);
+                    }
+                }
+            }
+            
+            // Save properties to file
+            try (FileOutputStream out = new FileOutputStream(filePath)) {
+                properties.store(out, "Map: " + map.getName());
+                // Cache the saved map reference
+                lastSavedObjects.put(filePath, map.hashCode());
+                return true;
+            }
+        } catch (Exception e) {
+            ErrorLogger.logError("Error saving map to " + filePath, e);
+            return false;
+        }
+    }
+
+    /**
+     * Loads a map from a file.
+     * 
+     * @param filePath the file path
+     * @return the loaded map, or null if failed
+     */
+    public static objectEditor.model.Map loadMap(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return null;
+        }
+        
+        // Check if we already have this map cached
+        if (mapCache.containsKey(filePath)) {
+            return mapCache.get(filePath);
+        }
+        
+        try {
+            Properties properties = new Properties();
+            
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                properties.load(in);
+            }
+            
+            String name = properties.getProperty("name", "New Map");
+            String description = properties.getProperty("description", "");
+            int width = Integer.parseInt(properties.getProperty("width", "10"));
+            int height = Integer.parseInt(properties.getProperty("height", "10"));
+            
+            objectEditor.model.Map map = new objectEditor.model.Map(width, height);
+            map.setName(name);
+            map.setDescription(description);
+            
+            // Load each terrain from its file
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    String terrainFile = properties.getProperty("terrain." + x + "." + y);
+                    if (terrainFile != null && !terrainFile.isEmpty()) {
+                        Terrain terrain = loadTerrain(terrainFile);
+                        if (terrain != null) {
+                            map.setTerrainAt(x, y, terrain);
+                        }
+                    }
+                }
+            }
+            
+            // Cache the loaded map
+            mapCache.put(filePath, map);
+            lastSavedObjects.put(filePath, map.hashCode());
+            
+            return map;
+        } catch (Exception e) {
+            ErrorLogger.logError("Error loading map from " + filePath, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Clears all object caches to free memory and ensure fresh data
+     */
+    public static void clearAllCaches() {
+        itemCache.clear();
+        creatureCache.clear();
+        traderCache.clear();
+        movementCache.clear();
+        spawnerCache.clear();
+        terrainCache.clear();
+        mapCache.clear();
+        lastSavedObjects.clear();
+        System.gc(); // Request garbage collection to clean up unused objects
+    }
+}

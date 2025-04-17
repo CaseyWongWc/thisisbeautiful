@@ -1,0 +1,12 @@
+#Game Trader Properties
+#Fri Apr 05 08:21:22 UTC 2025
+id=old-trader
+name=Old Trader
+description=An experienced trader with many stories to tell.
+imagePath=trader.png
+encounterDialogue=In all my years, I've collected quite a few treasures.
+positiveDialogue=Ah, you have good taste!
+negativeDialogue=No matter, there are other items to see.
+goldValue=75
+strengthValue=0
+tradeOffers=strength-potion

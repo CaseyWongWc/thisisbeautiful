@@ -1,0 +1,8 @@
+#Movement: CirclePattern
+#Sat Apr 05 05:54:17 GMT 2025
+directions=N\nNE\nE\nSE\nS\nSW\nW\nNW
+moveInterval=2
+name=CirclePattern
+random=false
+repeating=true
+reversible=false

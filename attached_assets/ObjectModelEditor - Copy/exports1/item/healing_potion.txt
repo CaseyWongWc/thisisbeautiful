@@ -1,0 +1,11 @@
+
+#Item: Healing Potion
+#Fri Apr 04 23:50:00 GMT 2025
+type=Item
+name=Healing Potion
+description=A powerful healing potion that restores health.
+imagePath=resources/images/items/one.png
+foodValue=10
+goldValue=50
+waterValue=5
+difficulties=Easy,Medium,Hard

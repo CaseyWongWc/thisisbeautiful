@@ -1,0 +1,10 @@
+#Item: Healing Potion
+#Sun Apr 06 07:03:31 GMT 2025
+description=A powerful healing potion that restores health and vitality.
+difficulties=Easy,Medium,Hard
+foodValue=0
+goldValue=50
+imagePath=/home/runner/workspace/resources/ICONDUMP/food.png/icons/ffffff/transparent/1x1/delapouite/wine-bottle.png
+name=Healing Potion
+type=Item
+waterValue=0

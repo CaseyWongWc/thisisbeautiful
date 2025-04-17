@@ -1,0 +1,11 @@
+#Creature: Example Creature
+#Sat Apr 05 04:45:47 GMT 2025
+description=A basic example creature
+difficulties=1,2,3
+goldPenalty=2
+imagePath=
+itemDrop=Healing Potion
+movement=CirclePattern
+name=Example Creature
+strengthPenalty=5
+waterPenalty=3

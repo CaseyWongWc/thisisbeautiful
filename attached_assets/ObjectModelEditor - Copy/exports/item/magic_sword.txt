@@ -1,0 +1,11 @@
+#Item: Magic Sword
+#Sat Apr 06 00:00:00 UTC 2025
+type=Item
+name=Magic Sword
+description=A gleaming blade imbued with arcane energies.
+imagePath=resources/ICONDUMP/symbol.png/icons/ffffff/transparent/1x1/lorc/rune-sword.png
+foodValue=0
+goldValue=250
+waterValue=0
+strengthValue=30
+difficulties=Medium,Hard

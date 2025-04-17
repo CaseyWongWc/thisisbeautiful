@@ -1,0 +1,41 @@
+WARNING: Item not found: magic_sword
+WARNING: Item not found: water_canteen
+WARNING: Item not found: healing_potion
+WARNING: Item not found: bread_ration
+Loading creature from exports/creature/Example Creature.txt
+Loading creature from exports/creature/deer.txt
+Loading creature from exports/creature/example_creature.txt
+Loading creature from exports/creature/hello.txt
+Loading creature from exports/creature/hi.txt
+Loading creature from exports/creature/Goblin.txt
+Loading creature from exports/creature/goblin.txt
+Loading creature from exports/creature/wolf.txt
+Loading trader from exports/trader/Fox-Beast Fisherman.txt
+Loading trader from exports/trader/Merchant.txt
+Loading trader from exports/trader/Wandering Merchant.txt
+Loading trader from exports/trader/wandering_merchant.txt
+Loading trader from exports/trader/Dwarf Merchant.txt
+Loading trader from exports/trader/dwarf_merchant.txt
+Loading terrains from: /home/runner/workspace/exports/terrain
+Found 10 terrain files
+Loading terrain from file: exports/terrain/Desert.txt
+Successfully loaded terrain: Desert
+Loading terrain from file: exports/terrain/cave.txt
+Successfully loaded terrain: Cave
+Loading terrain from file: exports/terrain/desert.txt
+Successfully loaded terrain: Desert
+Loading terrain from file: exports/terrain/forest.txt
+Successfully loaded terrain: Forest
+Loading terrain from file: exports/terrain/mountain.txt
+Successfully loaded terrain: Mountain
+Loading terrain from file: exports/terrain/plains.txt
+Successfully loaded terrain: Plains
+Loading terrain from file: exports/terrain/river.txt
+Successfully loaded terrain: River
+Loading terrain from file: exports/terrain/City.txt
+Successfully loaded terrain: City
+Loading terrain from file: exports/terrain/New Terrain.txt
+Successfully loaded terrain: New Terrain
+Loading terrain from file: exports/terrain/grass.txt
+Successfully loaded terrain: grass
+Loaded 10 terrains in total

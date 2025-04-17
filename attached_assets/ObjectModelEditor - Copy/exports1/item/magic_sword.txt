@@ -1,0 +1,11 @@
+
+#Item: Magic Sword
+#Fri Apr 04 23:50:00 GMT 2025
+type=Item
+name=Magic Sword
+description=A mystical blade that pulses with arcane energy.
+imagePath=resources/images/items/two.png
+foodValue=0
+goldValue=250
+waterValue=0
+difficulties=Medium,Hard

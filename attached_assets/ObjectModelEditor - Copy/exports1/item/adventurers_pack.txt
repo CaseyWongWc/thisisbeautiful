@@ -1,0 +1,11 @@
+
+#Item: Adventurer's Pack
+#Fri Apr 04 23:50:00 GMT 2025
+description=A sturdy pack containing basic supplies for adventuring.
+foodValue=20
+goldValue=75
+imagePath=resources/images/items/four.png
+name=Adventurer's Pack
+type=Item
+waterValue=15
+difficulties=Easy,Medium

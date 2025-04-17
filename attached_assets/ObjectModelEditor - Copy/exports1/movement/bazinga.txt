@@ -1,0 +1,8 @@
+#Movement: bazinga
+#Sat Apr 05 04:33:26 GMT 2025
+directions=N\nNE\nE\nSE\nS\nSW\nW\nNW
+moveInterval=1
+name=bazinga
+random=false
+repeating=true
+reversible=false

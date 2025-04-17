@@ -1,0 +1,12 @@
+#Game Trader Properties
+#Fri Apr 05 08:21:22 UTC 2025
+id=desert-merchant
+name=Desert Merchant
+description=A merchant specialized in survival gear.
+imagePath=resources/images/traders/merchant.png
+encounterDialogue=Water is precious in these parts. Would you like to trade?
+positiveDialogue=Stay hydrated, friend!
+negativeDialogue=The desert is unforgiving to those who don't prepare.
+goldValue=50
+strengthValue=0
+tradeOffers=water-canteen

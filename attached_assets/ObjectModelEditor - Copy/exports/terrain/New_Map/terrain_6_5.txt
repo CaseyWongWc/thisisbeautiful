@@ -1,0 +1,13 @@
+#Terrain: 
+#Sun Apr 06 00:54:27 GMT 2025
+creatureCount=0
+description=
+goldCost=0
+imagePath=
+itemCount=0
+movementCost=0
+name=
+spawnerCount=0
+strengthCost=0
+thirstCost=0
+traderCount=0

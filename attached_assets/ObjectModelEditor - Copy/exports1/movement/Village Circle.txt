@@ -1,0 +1,8 @@
+#Movement: Village Circle
+#Sat Apr 05 05:55:08 GMT 2025
+directions=W
+moveInterval=2
+name=Village Circle
+random=false
+repeating=true
+reversible=false

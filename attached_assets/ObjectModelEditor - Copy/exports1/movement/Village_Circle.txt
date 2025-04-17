@@ -1,0 +1,8 @@
+#Movement: Village Circle
+#Wed Apr 03 21:45:32 UTC 2024
+name=Village Circle
+directions=right\nleft\nright\nwait\ndown\nwait\nleft\nup
+repeating=true
+random=false
+reversible=false
+moveInterval=2

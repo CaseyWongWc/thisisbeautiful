@@ -1,0 +1,13 @@
+#Terrain: grass
+#Sat Apr 05 22:47:16 GMT 2025
+creatureCount=0
+description=the floor
+goldCost=0
+imagePath=
+itemCount=0
+movementCost=0
+name=grass
+spawnerCount=0
+strengthCost=0
+thirstCost=0
+traderCount=0
